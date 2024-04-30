@@ -1,0 +1,200 @@
+import rclpy
+from rclpy.node import Node
+
+
+import numpy as np
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, PoseArray,PointStamped
+import time
+
+
+class CityDriver(Node):
+    def __init__(self):
+        super().__init__("city_driver")
+        self.publisher = None #TODO
+        self.localize_sub = self.create_subscription(Odometry,"/pf/pose/odom",self.localize_cb,10)
+        self.curr_pose = None
+        self.goal_sub = self.create_subscription(
+            PointStamped,
+            "/clicked_point",
+            self.goal_cb,
+            10
+        ) #change this to accept whatever input they give use
+        self.goals=[]
+        self.end_point=None
+        self.state = None
+
+        self.traj_pub = self.create_publisher(
+            PoseArray,
+            "/trajectory/current",
+            10
+        )
+
+        self.traj_sub = self.create_subscription(PoseArray,"/trajectory/store", self.trajectory_callback, 1)
+
+        self.wait_time= 0
+        self.max_wait = 5 #wait for shell to be placed
+
+        self.initial_pub = self.create_publisher(PoseWithCovarianceStamped,
+            "/initialpose",
+            10
+        )
+        self.goal_pub = self.create_publisher(
+            PoseStamped,
+            "/goal_pose",
+            10
+        )
+
+        self.viz_timer = self.create_timer(1/5, self.motion_cb)
+        self.path = None
+        self.pub_start = True
+        
+        
+
+        self.get_logger().info("Driver Initialized")
+    def is_close(self,start_point,end_point):
+        x1,y1= start_point.pose.pose.position.x,start_point.pose.pose.position.y
+        car_xy_pos = np.array((x1,y1))
+        x2,y2 = end_point.pose.position.x,end_point.pose.position.y
+        p2 = np.array((x2,y2))
+        return np.linalg.norm(car_xy_pos-p2) <= .05
+    def localize_cb(self, odom_msg):
+        self.curr_pose = odom_msg
+        #if at goal, wait for shell to be placed
+
+        if (self.curr_pose and self.end_point) and self.is_close(self.curr_pose,self.end_point):
+            
+            if self.wait_time == 0:
+                self.state = "wait_start"
+                curr_time = time.time()
+                self.wait_time = curr_time
+
+
+    def trajectory_callback(self,msg):
+        self.get_logger().info("in traj cb")
+        self.path = msg
+        if self.pub_start:
+            self.pub_start=False
+            self.publish_path()
+    
+
+
+    def goal_cb(self,msg):
+        """store goal points to send to path planner"""
+        #add start point to end of goal points
+    
+        start1 = PoseWithCovarianceStamped()
+        end1 = PoseStamped()
+
+        start1.pose.pose.position.x = 24.0  
+        start1.pose.pose.position.y = -1.0
+        start1.pose.pose.orientation.z = -1.0
+        start1.pose.pose.orientation.w = 0.0
+        self.initial_pub.publish(start1)
+
+        end1.pose.position.x = 12.07  
+        end1.pose.position.y = -0.75  
+        end1.pose.orientation.z = 1.0
+        end1.pose.orientation.w = 0.0
+
+        end3 = PoseStamped()
+
+        end3.pose.position.x = -4.5  
+        end3.pose.position.y = 23.0  
+        end3.pose.orientation.z = 0.5
+        end3.pose.orientation.w = 0.85
+
+        end2 = PoseStamped()
+        end2.pose.position.x = 24.0  
+        end2.pose.position.y = -1.0  
+        end2.pose.orientation.z = -1.0
+        end2.pose.orientation.w = 0.0
+
+        self.goals.extend([end1,end3,end2,start1])
+
+        self.state="start"
+        self.get_logger().info("added goals and changed position")
+
+    def path_plan(self,goal):
+        """
+        Creates a path from current position to goal position,probably want to move all path planning inside this node for ease
+        """
+        #get path from start position to nearest point on trajectory
+        
+
+        #get path from nearest point on trajectory to goal position
+        
+
+        #string together start ->traj -> end traj -> goal paths
+
+
+        #return entire path
+
+        #for NOW
+
+        self.goal_pub.publish(goal)
+
+        
+
+        pass
+    def publish_path(self):
+        """
+        Publish trajectory and visualization
+        """
+        self.traj_pub.publish(self.path)
+
+    def motion_cb(self):
+
+        
+        
+
+
+        if self.goals:
+            
+            if self.state == "start" :
+                self.get_logger().info("went through start")
+                self.state = "drive"
+                self.end_point = self.goals.pop(0)
+                self.path = self.path_plan(self.end_point)
+                #self.publish_path()
+                
+            elif self.state == "drive":
+
+                pass 
+            elif self.state == "wait_start":
+                self.get_logger().info("in wait start")
+                self.end_point = self.goals.pop(0)
+                self.path = self.path_plan(self.end_point)
+                self.state="wait"
+            elif self.state == "wait":
+                self.get_logger().info("in wait")
+                curr_time = time.time()
+                if (curr_time - self.wait_time ) >=self.max_wait:
+                    self.publish_path()
+                    self.state = "drive"
+                    self.wait_time = 0
+            else:
+                pass
+        
+
+
+        
+
+
+
+
+
+
+
+       
+
+def main(args=None):
+    rclpy.init(args=args)
+    try:
+        rclpy.spin(CityDriver())
+    except KeyboardInterrupt:
+        pass
+    rclpy.shutdown()
+
+if __name__=="__main__":
+    main()
