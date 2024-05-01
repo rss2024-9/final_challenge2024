@@ -48,21 +48,25 @@ class CityDriver(Node):
         self.viz_timer = self.create_timer(1/5, self.motion_cb)
         self.path = None
         self.pub_start = True
-        self.stopping_dist = 0.1
+        self.stopping_dist = 0.1 #m
         
         
 
         self.get_logger().info("Driver Initialized")
+
     def is_close(self,start_point,end_point):
         x1,y1= start_point.pose.pose.position.x,start_point.pose.pose.position.y
         car_xy_pos = np.array((x1,y1))
         x2,y2 = end_point.pose.position.x,end_point.pose.position.y
         p2 = np.array((x2,y2))
         return np.linalg.norm(car_xy_pos-p2) <= self.stopping_dist
+    
+
+
     def localize_cb(self, odom_msg):
         self.curr_pose = odom_msg
-        #if at goal, wait for shell to be placed
 
+        #if at goal, wait for shell to be placed
         if (self.curr_pose and self.end_point) and self.is_close(self.curr_pose,self.end_point):
             
             if self.wait_time == 0:
@@ -74,6 +78,7 @@ class CityDriver(Node):
     def trajectory_callback(self,msg):
         self.get_logger().info("in traj cb")
         self.path = msg
+        #publish path immediately if starting
         if self.pub_start:
             self.pub_start=False
             self.publish_path()
@@ -130,22 +135,25 @@ class CityDriver(Node):
         self.state="start"
         self.get_logger().info("added goals and changed position")
 
+        ##All of the above is for tests
+
+        #!TODO take in PoseArray of goal points and put them in instance variable, also add start point
+
     def path_plan(self,goal):
         """
         Creates a path from current position to goal position,probably want to move all path planning inside this node for ease
         """
+        #Modify path planning so it does the following:
+
         #get path from start position to nearest point on trajectory
-        
 
         #get path from nearest point on trajectory to goal position
         
-
         #string together start ->traj -> end traj -> goal paths
-
 
         #return entire path
 
-        #for NOW
+        #If path plan does the above stuff, all we need is this next line of code
 
         self.goal_pub.publish(goal)
 
@@ -154,16 +162,19 @@ class CityDriver(Node):
         pass
     def publish_path(self):
         """
-        Publish trajectory and visualization
+        Publish trajectory to follower
         """
+
+        #publish path so car can follow it
         self.traj_pub.publish(self.path)
+        #cleare path variable just in case
         self.path=None
 
     def motion_cb(self):
-
-        
-        
-
+        """
+        State machine main function. while there are goals to get to move through start state, to drive, 
+        to waiting(letting shell be place), to driving until you reach end of goals
+        """
 
         if self.goals:
             
@@ -192,6 +203,7 @@ class CityDriver(Node):
             else:
                 pass
         elif not self.goals and self.path is not None:
+            #wait to publish return to start path until after last shell is placed
             curr_time = time.time()
             if (curr_time - self.wait_time ) >=self.max_wait:
                 self.publish_path()
