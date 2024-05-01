@@ -48,6 +48,7 @@ class CityDriver(Node):
         self.viz_timer = self.create_timer(1/5, self.motion_cb)
         self.path = None
         self.pub_start = True
+        self.stopping_dist = 0.1
         
         
 
@@ -57,7 +58,7 @@ class CityDriver(Node):
         car_xy_pos = np.array((x1,y1))
         x2,y2 = end_point.pose.position.x,end_point.pose.position.y
         p2 = np.array((x2,y2))
-        return np.linalg.norm(car_xy_pos-p2) <= .05
+        return np.linalg.norm(car_xy_pos-p2) <= self.stopping_dist
     def localize_cb(self, odom_msg):
         self.curr_pose = odom_msg
         #if at goal, wait for shell to be placed
@@ -85,12 +86,22 @@ class CityDriver(Node):
     
         start1 = PoseWithCovarianceStamped()
         end1 = PoseStamped()
+        end4 = PoseStamped()
+
+        end4.pose.position.x = 24.0  
+        end4.pose.position.y = -1.0
+        end4.pose.orientation.z = -1.0
+        end4.pose.orientation.w = 0.0
+
+        
 
         start1.pose.pose.position.x = 24.0  
         start1.pose.pose.position.y = -1.0
         start1.pose.pose.orientation.z = -1.0
         start1.pose.pose.orientation.w = 0.0
         self.initial_pub.publish(start1)
+        time.sleep(2)
+        self.curr_pose = start1
 
         end1.pose.position.x = 12.07  
         end1.pose.position.y = -0.75  
@@ -99,18 +110,22 @@ class CityDriver(Node):
 
         end3 = PoseStamped()
 
-        end3.pose.position.x = -4.5  
-        end3.pose.position.y = 23.0  
-        end3.pose.orientation.z = 0.5
-        end3.pose.orientation.w = 0.85
+        end3.pose.position.x = -19.755
+        end3.pose.position.y = 3.188
+        end3.pose.orientation.z = 0.666
+        end3.pose.orientation.w = 0.746
 
         end2 = PoseStamped()
-        end2.pose.position.x = 24.0  
-        end2.pose.position.y = -1.0  
+
+        end2.pose.position.x = 12.07  
+        end2.pose.position.y = -0.75  
         end2.pose.orientation.z = -1.0
         end2.pose.orientation.w = 0.0
 
-        self.goals.extend([end1,end3,end2,start1])
+
+        
+
+        self.goals.extend([end1,end3,end2,end4])
 
         self.state="start"
         self.get_logger().info("added goals and changed position")
@@ -142,6 +157,7 @@ class CityDriver(Node):
         Publish trajectory and visualization
         """
         self.traj_pub.publish(self.path)
+        self.path=None
 
     def motion_cb(self):
 
@@ -155,16 +171,16 @@ class CityDriver(Node):
                 self.get_logger().info("went through start")
                 self.state = "drive"
                 self.end_point = self.goals.pop(0)
-                self.path = self.path_plan(self.end_point)
+                self.path_plan(self.end_point)
                 #self.publish_path()
                 
             elif self.state == "drive":
-
+                self.get_logger().info("driving")
                 pass 
             elif self.state == "wait_start":
                 self.get_logger().info("in wait start")
                 self.end_point = self.goals.pop(0)
-                self.path = self.path_plan(self.end_point)
+                self.path_plan(self.end_point)
                 self.state="wait"
             elif self.state == "wait":
                 self.get_logger().info("in wait")
@@ -175,6 +191,11 @@ class CityDriver(Node):
                     self.wait_time = 0
             else:
                 pass
+        elif not self.goals and self.path is not None:
+            curr_time = time.time()
+            if (curr_time - self.wait_time ) >=self.max_wait:
+                self.publish_path()
+                self.get_logger().info("returning to start")
         
 
 
