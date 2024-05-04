@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "city_drive = final_challenge2024.city_driving.city_driver:main"
+            "city_driver = final_challenge2024.city_driving.city_driver:main",
+            "basement_pub = final_challenge2024.city_driving.basement_point_publisher:main"
         ],
     },
 )

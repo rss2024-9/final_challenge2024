@@ -15,8 +15,8 @@ class CityDriver(Node):
         self.localize_sub = self.create_subscription(Odometry,"/pf/pose/odom",self.localize_cb,10)
         self.curr_pose = None
         self.goal_sub = self.create_subscription(
-            PointStamped,
-            "/clicked_point",
+            PoseArray,
+            "/shell_points",
             self.goal_cb,
             10
         ) #change this to accept whatever input they give use
@@ -89,55 +89,75 @@ class CityDriver(Node):
         """store goal points to send to path planner"""
         #add start point to end of goal points
     
-        start1 = PoseWithCovarianceStamped()
-        end1 = PoseStamped()
-        end4 = PoseStamped()
+        # start1 = PoseWithCovarianceStamped()
+        # end1 = PoseStamped()
+        # end4 = PoseStamped()
 
-        end4.pose.position.x = 24.0  
-        end4.pose.position.y = -1.0
-        end4.pose.orientation.z = -1.0
-        end4.pose.orientation.w = 0.0
-
-        
-
-        start1.pose.pose.position.x = 24.0  
-        start1.pose.pose.position.y = -1.0
-        start1.pose.pose.orientation.z = -1.0
-        start1.pose.pose.orientation.w = 0.0
-        self.initial_pub.publish(start1)
-        time.sleep(2)
-        self.curr_pose = start1
-
-        end1.pose.position.x = 12.07  
-        end1.pose.position.y = -0.75  
-        end1.pose.orientation.z = 1.0
-        end1.pose.orientation.w = 0.0
-
-        end3 = PoseStamped()
-
-        end3.pose.position.x = -19.755
-        end3.pose.position.y = 3.188
-        end3.pose.orientation.z = 0.666
-        end3.pose.orientation.w = 0.746
-
-        end2 = PoseStamped()
-
-        end2.pose.position.x = 12.07  
-        end2.pose.position.y = -0.75  
-        end2.pose.orientation.z = -1.0
-        end2.pose.orientation.w = 0.0
-
+        # end4.pose.position.x = 24.0  
+        # end4.pose.position.y = -1.0
+        # end4.pose.orientation.z = -1.0
+        # end4.pose.orientation.w = 0.0
 
         
 
-        self.goals.extend([end1,end3,end2,end4])
+        # start1.pose.pose.position.x = 24.0  
+        # start1.pose.pose.position.y = -1.0
+        # start1.pose.pose.orientation.z = -1.0
+        # start1.pose.pose.orientation.w = 0.0
+        # self.initial_pub.publish(start1)
+        # time.sleep(2)
+        # self.curr_pose = start1
 
-        self.state="start"
-        self.get_logger().info("added goals and changed position")
+        # end1.pose.position.x = 12.07  
+        # end1.pose.position.y = -0.75  
+        # end1.pose.orientation.z = 1.0
+        # end1.pose.orientation.w = 0.0
+
+        # end3 = PoseStamped()
+
+        # end3.pose.position.x = -19.755
+        # end3.pose.position.y = 3.188
+        # end3.pose.orientation.z = 0.666
+        # end3.pose.orientation.w = 0.746
+
+        # end2 = PoseStamped()
+
+        # end2.pose.position.x = 12.07  
+        # end2.pose.position.y = -0.75  
+        # end2.pose.orientation.z = -1.0
+        # end2.pose.orientation.w = 0.0
+
+
+        
+
+        # self.goals.extend([end1,end3,end2,end4])
+
+        # self.state="start"
+        # self.get_logger().info("added goals and changed position")
 
         ##All of the above is for tests
 
         #!TODO take in PoseArray of goal points and put them in instance variable, also add start point
+        self.get_logger().info("made it in here")
+        temp=[]
+        for point in msg.poses:
+            new_pose = PoseStamped()
+            new_pose.pose.position.x = point.position.x
+            new_pose.pose.position.y = point.position.y
+            new_pose.pose.position.z = point.position.z
+
+            temp.append(new_pose)
+        start = self.curr_pose
+        return_point = PoseStamped()
+        start = self.curr_pose
+        return_point.pose.position.x = start.pose.pose.position.x
+        return_point.pose.position.y = start.pose.pose.position.y
+        return_point.pose.orientation.z = start.pose.pose.orientation.z
+        return_point.pose.orientation.w = start.pose.pose.orientation.w
+        temp.append(return_point)
+        self.goals=temp
+        self.get_logger().info("got goal points, starting state machine")
+        self.state="start"
 
     def path_plan(self,goal):
         """
@@ -159,7 +179,7 @@ class CityDriver(Node):
 
         
 
-        pass
+        
     def publish_path(self):
         """
         Publish trajectory to follower
@@ -196,7 +216,7 @@ class CityDriver(Node):
             elif self.state == "wait":
                 self.get_logger().info("in wait")
                 curr_time = time.time()
-                if (curr_time - self.wait_time ) >=self.max_wait:
+                if (curr_time - self.wait_time ) >=self.max_wait and self.path:
                     self.publish_path()
                     self.state = "drive"
                     self.wait_time = 0
@@ -205,7 +225,7 @@ class CityDriver(Node):
         elif not self.goals and self.path is not None:
             #wait to publish return to start path until after last shell is placed
             curr_time = time.time()
-            if (curr_time - self.wait_time ) >=self.max_wait:
+            if (curr_time - self.wait_time ) >=self.max_wait and self.path:
                 self.publish_path()
                 self.get_logger().info("returning to start")
         
