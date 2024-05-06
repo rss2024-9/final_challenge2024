@@ -12,8 +12,10 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        # ('share/final_challenge2024/launch', glob.glob(os.path.join('launch', '*launch.py'))),
-        # ('share/final_challenge2024/launch', glob.glob(os.path.join('launch', '*launch.xml'))),
+new_stop_controller
+        ('share/final_challenge2024/launch', glob.glob(os.path.join('launch', '*launch.py'))),
+        ('share/final_challenge2024/launch', glob.glob(os.path.join('launch', '*launch.xml'))),
+        ('lib/'+package_name+"", glob.glob(os.path.join('final_challenge2024/', '*.py'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
