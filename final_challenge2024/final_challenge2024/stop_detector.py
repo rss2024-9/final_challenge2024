@@ -15,7 +15,7 @@ class SignDetector(Node):
         self.detector = StopSignDetector()
         self.publisher = self.create_publisher(PixelLocation, "/relative_sign_px", 10)
         self.debug_pub = self.create_publisher(Image, "/stopsign_debug_img", 10)
-        self.subscriber = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.callback, 1)
+        self.subscriber = self.create_subscription(Image, "/zed/zed_node/rgb/image_rect_color", self.callback, 5)
         self.bridge = CvBridge()
 
         self.get_logger().info("Stop Detector Initialized")
@@ -49,6 +49,9 @@ class SignDetector(Node):
 
             self.publisher.publish(pixel_msg)
         box_image = self.detector.draw_box(image, bounding_box)
+        
+
+        box_image = np.array(box_image)
 
         # debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
         debug_msg = self.bridge.cv2_to_imgmsg(box_image, "bgr8")
