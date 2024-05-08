@@ -18,8 +18,8 @@ class PurePursuit(Node):
 
     def __init__(self):
         super().__init__("trajectory_follower")
-        self.declare_parameter('odom_topic', "default")
-        self.declare_parameter('drive_topic', "default")
+        self.declare_parameter('odom_topic', "/odom")
+        self.declare_parameter('drive_topic', "drive")
 
         self.odom_topic = self.get_parameter('odom_topic').get_parameter_value().string_value
         self.drive_topic = self.get_parameter('drive_topic').get_parameter_value().string_value
@@ -27,7 +27,7 @@ class PurePursuit(Node):
         self.default_lookahead = 0.9  # FILL IN #
         self.lookahead=self.default_lookahead
         self.get_logger().info(f'{self.lookahead}')
-        self.speed = 4.  # FILL IN #
+        self.speed = 2.  # FILL IN #
         self.wheelbase_length = 0.3  # FILL IN #
 
         self.trajectory = LineTrajectory("/followed_trajectory")
@@ -37,7 +37,7 @@ class PurePursuit(Node):
         self.traj_sub = self.create_subscription(PoseArray,"/trajectory/current", self.trajectory_callback, 1)
         
         #this is so that the thing will always visualize
-        self.viz_sub = self.create_subscription(PoseArray,"loaded_trajectory/path", self.dummy_callback, 1)
+        #self.viz_sub = self.create_subscription(PoseArray,"loaded_trajectory/path", self.dummy_callback, 1)
 
         self.drive_pub = self.create_publisher(AckermannDriveStamped,
                                                self.drive_topic,
@@ -120,6 +120,7 @@ class PurePursuit(Node):
         traj_norms[:,1] = -deltas[:,0]
 
         traj_norms_sqd = traj_norms**2
+        #print(traj_norms_sqd)
         sum_sqd_traj_norms = np.abs(np.sum(traj_norms_sqd,axis=1))
         traj_norms = traj_norms/np.sqrt(sum_sqd_traj_norms[:, np.newaxis])
 
@@ -146,8 +147,13 @@ class PurePursuit(Node):
         for i in range(0,A.shape[0],2):
             A[i:i+2,i] = ab[int(i/2),:]
             A[i:i+2,i+1] = cd[int(i/2),:]
+        try:
 
-        t = np.linalg.solve(A,ac.T)
+            t = np.linalg.solve(A,ac.T)
+        except np.linalg.LinAlgError:
+            #self.get_logger().info("had to approximate")
+            #print(A)
+            t=np.linalg.lstsq(A,ac.T)[0]
 
         new_points = np.zeros((segs.shape[0]+1,2))
         start_points=segs[:,:2]
@@ -217,7 +223,7 @@ class PurePursuit(Node):
 
         #if the car reaches the end stop
         #self.get_logger().info(f'{dist_from_end}')
-        if (dist_from_end <= 0.05) and np.all(p2 == traj_points[-1]):
+        if (dist_from_end <= 0.3) and np.all(p2 == traj_points[-1]):
             self.speed = 0.
             steering_angle = 0.
             drive_msg = AckermannDriveStamped()
@@ -361,8 +367,9 @@ class PurePursuit(Node):
         self.get_logger().info(f"Receiving new trajectory {len(msg.poses)} points")
 
         self.trajectory.clear()
-        self.trajectory.fromPoseArray(msg)
-        self.trajectory.publish_viz(duration=0.0)
+        self.speed=2.0
+        self.trajectory.fromPoseArray(msg,include_Z=True)
+        #self.trajectory.publish_viz(duration=0.0)
         self.initialized_traj = True
     
     def dummy_callback(self,msg):
