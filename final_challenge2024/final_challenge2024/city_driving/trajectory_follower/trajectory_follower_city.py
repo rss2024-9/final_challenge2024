@@ -27,7 +27,7 @@ class PurePursuit(Node):
         self.default_lookahead = 0.9  # FILL IN #
         self.lookahead=self.default_lookahead
         self.get_logger().info(f'{self.lookahead}')
-        self.speed = 2.  # FILL IN #
+        self.speed = 4.  # FILL IN #
         self.wheelbase_length = 0.3  # FILL IN #
 
         self.trajectory = LineTrajectory("/followed_trajectory")
@@ -60,7 +60,7 @@ class PurePursuit(Node):
         self.viz_pubp2 = self.create_publisher(PoseArray, "/p2", 1)
 
         #offset from left line
-        self.offset = 0.5
+        self.offset = 0.3175
         
 
         #flip counter
@@ -75,10 +75,7 @@ class PurePursuit(Node):
         car_x = odometry_msg.pose.pose.position.x
         car_y = odometry_msg.pose.pose.position.y
         car_z = odometry_msg.pose.pose.position.z
-        # #the camara of the car is at the origin
-        # car_x = 0.
-        # car_y = 0.
-        # car_z = 0.
+        
         car_xy_pos = np.array((car_x,car_y))
         
 
@@ -107,42 +104,9 @@ class PurePursuit(Node):
             traj_points = traj_points[::-1]
             traj_points_flags = traj_points_flags[::-1]
             
-        # ###########################################################
-        # #convert everything to base fram to make it easier to move the points
-        # ###########################################################
-        # car_x_world = odometry_msg.pose.pose.position.x
-        # car_y_world = odometry_msg.pose.pose.position.y
-        # # car_z = odometry_msg.pose.pose.position.z
-        # new_traj_points = np.empty(traj_points.shape)
-        # car_ort_x = odometry_msg.pose.pose.orientation.x
-        # car_ort_y = odometry_msg.pose.pose.orientation.y
-        # car_ort_z = odometry_msg.pose.pose.orientation.z
-        # car_ort_w = odometry_msg.pose.pose.orientation.w
-        # theta = euler_from_quaternion((car_ort_x, car_ort_y, car_ort_z, car_ort_w))[-1]
-
-        # traj_points[:,0] = traj_points[:,0]-car_x_world
-        # traj_points[:,1] = traj_points[:,1]-car_y_world
-
-        # new_traj_points[:,0] = np.cos(-theta)*traj_points[:,0]-np.sin(-theta)*traj_points[:,1]
-        # new_traj_points[:,1] = np.sin(-theta)*traj_points[:,0]+np.cos(-theta)*traj_points[:,1]
-        # traj_points=new_traj_points
-        # traj_points = traj_points-np.array([0,self.offset])
-        # ######################################################################################################
-        # #######################################################################################################
-
-        # ###########################################################
-        # #convert everything back to world
-        # ###########################################################
-        # new_traj_points = np.empty(traj_points.shape)
-        # new_traj_points[:,0] = np.cos(theta)*traj_points[:,0]-np.sin(theta)*traj_points[:,1]
-        # new_traj_points[:,1] = np.sin(theta)*traj_points[:,0]+np.cos(theta)*traj_points[:,1]
-        # traj_points=new_traj_points
-        # traj_points[:,0] = traj_points[:,0]+car_x_world
-        # traj_points[:,1] = traj_points[:,1]+car_y_world
-
-        # ######################################################################################################
-        # #######################################################################################################
         
+
+
         start_pts = traj_points[:-1,:]
         end_pts = traj_points[1:,:]
         segs = np.empty((start_pts.shape[0],4))
@@ -203,26 +167,7 @@ class PurePursuit(Node):
         min_index = np.argmin(nrst_distances)
         nearest_segment = traj_points[min_index:(min_index+2),:]
         
-        # segment_flag_start = traj_points_flags[min_index]
-        # segment_flag_end = traj_points_flags[min_index+1]
 
-        # if segment_flag_start==segment_flag_end:
-        #     segment_flag = segment_flag_start
-        # elif segment_flag_start == 1. and segment_flag_end == 0.:
-        #     segment_flag = segment_flag_end
-        # elif segment_flag_start ==0. and segment_flag_end ==1.:
-        #     segment_flag = segment_flag_start
-        
-        # if segment_flag == 0.0:
-        #     self.offset = self.offset_default
-        #     if self.on_planned_path == 1:
-        #         self.on_planned_path = 0
-        #         return
-        # elif segment_flag == 1.0:
-        #     self.offset = 0.0
-        #     if self.on_planned_path == 0:
-        #         self. on_planned_path = 1
-        #         return
             
         
 
@@ -251,29 +196,15 @@ class PurePursuit(Node):
             
 
         #find the centerline distance from the current segment for data
-        centerline_distance = self.find_centerline_dist(p1,p2,car_xy_pos)
+        centerline_distance = self.find_centerline_dist(p1,p2,car_xy_pos)+self.offset
         self.lookahead = max(np.min(nrst_distances),self.default_lookahead)
         # Open a file in write mode
-        # current_time = (time.time()-self.t0)
-        # with open("centerline_data.txt", "a") as file:
-        #     # Write each item from the data list to the file
-        #     file.write(f"{centerline_distance},{current_time}\n")
+        current_time = (time.time()-self.t0)
+        with open("centerline_data.txt", "a") as file:
+            # Write each item from the data list to the file
+            file.write(f"{centerline_distance},{current_time}\n")
 
-        # #we need to account for the fact that right turns are on the inside
-        # #and left turns are on the outside
-        # if (min_index+3) <= traj_points.shape[0]:
-        #     next_segemnt = traj_points[(min_index+1):(min_index+3),:]
-        #     start_point = next_segemnt[0,:]
-        #     end_point = next_segemnt[1,:]
-        #     #self.get_logger().info(f'sp {start_point}')
-        #     dx = end_point[0]-start_point[0]
-        #     dy = end_point[1]-start_point[1]
-        #     turn_vector = np.array([dx,dy])
-        #     car_direction_norm = np.array([car_y_direction])
-        #     turn_factor = np.dot(car_direction_norm,turn_vector)
-        #     turn_factor = turn_factor/abs(turn_factor)
-        # else:
-        #     turn_factor = 0
+
     
         #if the car is so close to the end look to the next
         dist_from_end = np.linalg.norm(car_xy_pos-p2)
