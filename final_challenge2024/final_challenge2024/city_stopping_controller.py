@@ -38,8 +38,8 @@ class CityStoppingController(Node):
         #when this countdown is done, wait for cooldown to decrement
         #then reset both
         self.ignore_stopsigns = False
-        self.stopsign_brake_time = 10 #can adjust i guess, plan to just decrement every time a drive command recieved
-        self.stopsign_cooldown = 10
+        self.stopsign_brake_time = 30 #can adjust i guess, plan to just decrement every time a drive command recieved
+        self.stopsign_cooldown = 30
         
         # Fetch constants from the ROS parameter server
         # self.SCAN_TOPIC = self.get_parameter('scan_topic').get_parameter_value().string_value
@@ -97,8 +97,8 @@ class CityStoppingController(Node):
         else: #stopsign cooldown complete
             #reset
             self.ignore_stopsigns = False
-            self.stopsign_brake_time = 10
-            self.stopsign_cooldown = 10
+            self.stopsign_brake_time = 30
+            self.stopsign_cooldown = 30
 
     def log_car_pose(self,msg):
         """
