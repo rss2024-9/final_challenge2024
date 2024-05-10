@@ -10,6 +10,7 @@ from nav_msgs.msg import Odometry
 from cv_bridge import CvBridge
 from pyrender import OffscreenRenderer, Scene, PerspectiveCamera, PointLight, RenderFlags
 from scipy.spatial.transform import Rotation as R
+from math import atan
 
 os.environ["PYOPENGL_PLATFORM"] = "egl"
 
@@ -25,7 +26,7 @@ class TrackSimulator(Node):
         # The camera is a 3D renderer
         self.mesh = trimesh.load("/home/racecar/racecar_ws/src/final_challenge2024/track_racing/map/track.glb")
         self.scene = Scene.from_trimesh_scene(self.mesh)
-        self.camera = self.scene.add(PerspectiveCamera(yfov=72 * np.pi / 180, znear=1e-4), pose=np.eye(4))
+        self.camera = self.scene.add(PerspectiveCamera(yfov=2*atan(720/(2*1.39843)), znear=1e-4), pose=np.eye(4))
         self.light = self.scene.add(PointLight(color=np.ones(3), intensity=200.0), pose=np.eye(4))
         self.renderer = OffscreenRenderer(1920, 1080)
 
