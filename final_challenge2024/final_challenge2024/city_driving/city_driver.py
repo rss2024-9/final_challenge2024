@@ -48,7 +48,7 @@ class CityDriver(Node):
         self.viz_timer = self.create_timer(1/5, self.motion_cb)
         self.path = None
         self.pub_start = True
-        self.stopping_dist = 0.1 #m
+        self.stopping_dist = 0.3 #m
         
         
 

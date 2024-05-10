@@ -205,9 +205,9 @@ class PurePursuit(Node):
         self.lookahead = max(np.min(nrst_distances),self.default_lookahead)
         # Open a file in write mode
         current_time = (time.time()-self.t0)
-        with open("centerline_data.txt", "a") as file:
-            # Write each item from the data list to the file
-            file.write(f"{centerline_distance},{current_time}\n")
+        # with open("centerline_data.txt", "a") as file:
+        #     # Write each item from the data list to the file
+        #     file.write(f"{centerline_distance},{current_time}\n")
 
 
     
