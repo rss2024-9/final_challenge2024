@@ -8,7 +8,8 @@ class DrunkDriver(Node):
     def __init__(self):
         super().__init__("drunk_driver")
         
-        self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 10)
+        # self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 10)
+        self.drive_pub = self.create_publisher(AckermannDriveStamped, "/vesc/input/navigation", 10)
         self.timer = self.create_timer(1 / 20, self.timer_cb)
 
     def timer_cb(self):
