@@ -4,11 +4,12 @@ import rclpy
 
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Pose, PoseArray
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Path, Odometry
 from cv_bridge import CvBridge
-from skimage.morphology import binary_dilation, binary_erosion, skeletonize, rectangle, square
-from math import pi, cos, sin, atan2, tan
-from tf_transformations import quaternion_from_euler
+from skimage.morphology import binary_dilation, binary_erosion, skeletonize, square
+from math import pi, cos, sin, atan2, isnan
+from scipy.spatial.transform import Rotation as R
 
 
 # Pixels
@@ -46,7 +47,12 @@ class LaneDetector(Node):
             np.array(HOMOGRAPHY_IMAGE_PLANE)[:, np.newaxis, :],
             np.array(HOMOGRAPHY_GROUND_PLANE)[:, np.newaxis, :] * METERS_PER_INCH,
         )
-        self.lane_pub = self.create_publisher(PoseArray, "track_lane", 1)
+        self.lane_pub = self.create_publisher(Path, "track_lane", 1)
+
+        # Using frames causes segfaults (ros is stupid and does not work) so we do it manually
+        if self.simulation:
+            self.odom_sub = self.create_subscription(Odometry, "/odom", self.odom_cb, 1)
+            self.car = (np.array([0, 0]), R.identity())
 
         self.log("Lane detector initialized.")
     
@@ -74,26 +80,46 @@ class LaneDetector(Node):
             cv.circle(viz, (x, y), 3, (0, 0, 255), -1)
 
             # Visualize but make it ~ 3D ~
-            x, y = self.homography_transform(x, y)
-            q = quaternion_from_euler(0, 0, theta)
-            msg2 = PoseArray()
+            msg2 = Path()
 
-            msg2.header.frame_id = "base_link"
+            msg2.header.frame_id = "map"
             msg2.header.stamp = self.get_clock().now().to_msg()
+            msg2.poses = []
 
-            p = Pose()
-            p.position.x = x
-            p.position.y = y
-            p.orientation.x = q[0]
-            p.orientation.y = q[1]
-            p.orientation.z = q[2]
-            p.orientation.w = q[3]
-            msg2.poses.append(p)
+            for y in range(150, 200, 5):
+                x = (y - b) / m
+                x, y = self.homography_transform(x, y)
+
+                if abs(x) > 10 or abs(y) > 10 or isnan(x) or isnan(y):
+                    continue
+                if self.simulation:
+                    x, y, _ = self.car[1].apply(np.array([x, y, 0])) + self.car[0]
+
+                p = PoseStamped()
+                p.header.frame_id = "map"
+                p.header.stamp = msg2.header.stamp
+                p.pose.position.x = float(x)
+                p.pose.position.y = float(y)
+                p.pose.position.z = 0.0
+                msg2.poses.append(p)
 
             self.lane_pub.publish(msg2)
         
         self.debug_image_pub.publish(self.bridge.cv2_to_imgmsg(viz, "bgr8"))
     
+    def odom_cb(self, msg: Odometry):
+        x, y = msg.pose.pose.position.x, msg.pose.pose.position.y
+        q = [
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w,
+        ]
+        p = np.array([x, y, 0])
+        r = R.from_quat(q)
+
+        self.car = (p, r)
+
     @staticmethod
     def find_lanes(img, *, sim=False):
         """
