@@ -76,7 +76,7 @@ class LaneDetector(Node):
         # Visualize
         for (rho, theta, _) in lines:
             m, b = LaneDetector.line_polar_to_slope_intercept(rho, theta)
-            if m > -0.6:
+            if m > -0.3:
                 continue
             
             # y = mx + b --> x = (y - b) / m
