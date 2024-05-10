@@ -36,6 +36,12 @@ def cd_color_segmentation(img, template):
 
 	bounding_box = (0,0,0,0)
 	hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+	# h,w = hsv_img.shape[:2] #mask top and bottom
+	# cv2.rectangle(hsv_img,(0,0),(w,int(h*.4)),(0,0,0),-1) #top rectangle
+	# cv2.rectangle(hsv_img, (0, h-int(h*.4)), (w, h), (0, 0, 0), -1)#bottom rectangle
+
+
 	# cv2.imwrite("hsv.jpg", hsv_img) 
 
 	# red color bounds in HSV
@@ -49,13 +55,6 @@ def cd_color_segmentation(img, template):
 
 	mask = cv2.inRange(hsv_img, red_low, red_high)
 	# cv2.imwrite("mask.jpg", mask) 
- 
-	# lower_white = (0, 0, 150)
-	# upper_white = (255, 30, 255)
-	# white_mask = cv2.inRange(hsv_img, lower_white, upper_white)
-
-	# combined_mask = cv2.bitwise_or(red_mask, white_mask)
-	# result = cv2.bitwise_and(img, img, mask=combined_mask)
 
 	# erode and dilate to get rid of noise
 	# structuring element is what erosion looks at - if everything inside is red, then it will be kept
@@ -72,7 +71,7 @@ def cd_color_segmentation(img, template):
 		x, y, w, h = cv2.boundingRect(biggest_contour)
 		# bounding_box = ((x, y), (x + w, y + h))
   
-		#modify to match that of stop sign detector
+		#modify to match that of stop light detector
 		bounding_box = (x, y, x+w, y+h)
 	else:
 		#comment out later?
