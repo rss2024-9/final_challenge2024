@@ -53,7 +53,7 @@ class PurePursuit(Node):
         self.viz_pubp2 = self.create_publisher(PoseArray, "/p2", 1)
 
         #offset from left line
-        self.offset = 0.3175
+        self.offset = 0.20
 
 
 
