@@ -19,7 +19,7 @@ class PurePursuit(Node):
     def __init__(self):
         super().__init__("trajectory_follower")
         self.declare_parameter('odom_topic', "/odom")
-        self.declare_parameter('drive_topic', "drive")
+        self.declare_parameter('drive_topic', "/vesc/input/navigation")
 
         self.odom_topic = self.get_parameter('odom_topic').get_parameter_value().string_value
         self.drive_topic = self.get_parameter('drive_topic').get_parameter_value().string_value
@@ -46,9 +46,9 @@ class PurePursuit(Node):
         
         #subscribe to particle filter localization #turn back on for real car
         #real
-        #self.pose_sub = self.create_subscription(Odometry,"/pf/pose/odom",self.pose_callback, 1)
+        self.pose_sub = self.create_subscription(Odometry,"/pf/pose/odom",self.pose_callback, 1)
         #sim
-        self.pose_sub = self.create_subscription(Odometry,"/odom",self.pose_callback, 1)   
+        #self.pose_sub = self.create_subscription(Odometry,"/odom",self.pose_callback, 1)   
 
         #viz target point
         self.viz_pub = self.create_publisher(PoseArray, "/target_point", 1) 
