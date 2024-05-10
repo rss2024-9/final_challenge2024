@@ -28,6 +28,13 @@ HOMOGRAPHY_GROUND_PLANE = [
 ]
 METERS_PER_INCH = 0.0254
 
+# HOMOGRAPHY_SIMULATION_IMAGE_PLANE = [
+#     [1210, 578],
+# ]
+# HOMOEGRAPHY_SIMULATION_GROUND_PLANE = [
+#     []
+# ]
+
 class LaneDetector(Node):
     def __init__(self):
         super().__init__("lane_detector")
@@ -69,14 +76,14 @@ class LaneDetector(Node):
         # Visualize
         for (rho, theta, _) in lines:
             m, b = LaneDetector.line_polar_to_slope_intercept(rho, theta)
-            if m > -0.2:
+            if m > -0.6:
                 continue
             
             # y = mx + b --> x = (y - b) / m
             y = 200
             x = int((y - b) / m)
 
-            cv.line(viz, *LaneDetector.line_polar_to_cartesian(rho, theta), (255, 0, 0), 1, cv.LINE_AA)
+            cv.line(viz, *LaneDetector.line_polar_to_cartesian(rho, theta), (255, 0, 0), 2, cv.LINE_AA)
             cv.circle(viz, (x, y), 3, (0, 0, 255), -1)
 
             # Visualize but make it ~ 3D ~
@@ -126,7 +133,7 @@ class LaneDetector(Node):
         Computer-vision algorithm to detect lanes on a track. Uses polar representation.
         """
         # Down-sample image
-        img = cv.resize(img, (600, 400), interpolation=cv.INTER_NEAREST)
+        # img = cv.resize(img, (600, 400), interpolation=cv.INTER_NEAREST)
 
         viz = np.copy(img)
 
