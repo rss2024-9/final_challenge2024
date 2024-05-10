@@ -23,7 +23,7 @@ class TrackSimulator(Node):
         self.bridge = CvBridge()
 
         # The camera is a 3D renderer
-        self.mesh = trimesh.load("/home/racecar/racecar_ws/src/final_challenge2024/track_racing/map/track.glb")
+        self.mesh = trimesh.load("/home/racecar/racecar_ws/src/final/final_challenge2024/track_racing/map/track.glb")
         self.scene = Scene.from_trimesh_scene(self.mesh)
         self.camera = self.scene.add(PerspectiveCamera(yfov=72 * np.pi / 180, znear=1e-4), pose=np.eye(4))
         self.light = self.scene.add(PointLight(color=np.ones(3), intensity=200.0), pose=np.eye(4))

@@ -4,9 +4,11 @@ import rclpy
 
 from rclpy.node import Node
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Pose, PoseArray
 from cv_bridge import CvBridge
 from skimage.morphology import binary_dilation, binary_erosion, skeletonize, rectangle, square
 from math import pi, cos, sin, atan2, tan
+from tf_transformations import quaternion_from_euler
 
 
 # Pixels
@@ -41,15 +43,16 @@ class LaneDetector(Node):
 
         # Homography maps 2D lanes to 3D
         self.homography, _ = cv.findHomography(
-            np.array(HOMOGRAPHY_GROUND_PLANE)[:, np.newaxis, :] * METERS_PER_INCH,
             np.array(HOMOGRAPHY_IMAGE_PLANE)[:, np.newaxis, :],
+            np.array(HOMOGRAPHY_GROUND_PLANE)[:, np.newaxis, :] * METERS_PER_INCH,
         )
+        self.lane_pub = self.create_publisher(PoseArray, "track_lane", 1)
 
         self.log("Lane detector initialized.")
     
     def log(self, s):
         """Short-hand for logging messages"""
-        self.get_logger().info(s)
+        self.get_logger().info(str(s))
     
     def image_cb(self, msg: Image):
         img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -59,9 +62,35 @@ class LaneDetector(Node):
 
         # Visualize
         for (rho, theta, _) in lines:
-            if tan(theta) == 0 or -1/tan(theta) > -0.6:
+            m, b = LaneDetector.line_polar_to_slope_intercept(rho, theta)
+            if m > -0.2:
                 continue
+            
+            # y = mx + b --> x = (y - b) / m
+            y = 200
+            x = int((y - b) / m)
+
             cv.line(viz, *LaneDetector.line_polar_to_cartesian(rho, theta), (255, 0, 0), 1, cv.LINE_AA)
+            cv.circle(viz, (x, y), 3, (0, 0, 255), -1)
+
+            # Visualize but make it ~ 3D ~
+            x, y = self.homography_transform(x, y)
+            q = quaternion_from_euler(0, 0, theta)
+            msg2 = PoseArray()
+
+            msg2.header.frame_id = "base_link"
+            msg2.header.stamp = self.get_clock().now().to_msg()
+
+            p = Pose()
+            p.position.x = x
+            p.position.y = y
+            p.orientation.x = q[0]
+            p.orientation.y = q[1]
+            p.orientation.z = q[2]
+            p.orientation.w = q[3]
+            msg2.poses.append(p)
+
+            self.lane_pub.publish(msg2)
         
         self.debug_image_pub.publish(self.bridge.cv2_to_imgmsg(viz, "bgr8"))
     
@@ -75,16 +104,16 @@ class LaneDetector(Node):
 
         viz = np.copy(img)
 
-        # Isolate the red track and lanes within it. This initially gets rid of the white lanes,
-        # but we get them back by dilating the mask horizontally.
-        hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-        mask = cv.inRange(hsv, (0, 75, 100), (10, 200, 255) if sim else (10, 100, 180))
-        mask = binary_dilation(mask, rectangle(5, 150 if sim else 50))
-        img *= mask.astype(np.uint8)[:, :, np.newaxis]
+        # # Isolate the red track and lanes within it. This initially gets rid of the white lanes,
+        # # but we get them back by dilating the mask horizontally.
+        # hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+        # mask = cv.inRange(hsv, (0, 75, 100), (10, 200, 255) if sim else (10, 100, 180))
+        # mask = binary_dilation(mask, rectangle(5, 150 if sim else 50))
+        # img *= mask.astype(np.uint8)[:, :, np.newaxis]
 
         # Mask out the bright white lanes
         white = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-        img = np.greater(white, 150 if sim else 200).astype(np.uint8) * 255
+        img = np.greater(white, 150).astype(np.uint8) * 255
 
         # Everything near top of image is probably not relevant and tends to leak
         img[:100, :] = 0
@@ -144,6 +173,27 @@ class LaneDetector(Node):
         
         return out
     
+    def homography_transform(self, u, v):
+        """
+        u and v are pixel coordinates.
+        The top left pixel is the origin, u axis increases to right, and v axis
+        increases down.
+
+        Returns a normal non-np 1x2 matrix of xy displacement vector from the
+        camera to the point on the ground plane.
+        Camera points along positive x axis and y axis increases to the left of
+        the camera.
+
+        Units are in meters.
+        """
+        xy = np.dot(self.homography, np.array([[u], [v], [1]]))
+        hxy = xy * (1.0 / xy[2, 0])
+
+        x = hxy[0, 0]
+        y = hxy[1, 0]
+
+        return x, y
+    
     @staticmethod
     def line_polar_to_cartesian(rho, theta, *, dist=10000):
         """
@@ -159,6 +209,16 @@ class LaneDetector(Node):
         pt1 = (int(x0 + (dist * b)), int(y0 - (a * dist)))
 
         return (pt0, pt1)
+    
+    @staticmethod
+    def line_polar_to_slope_intercept(rho, theta):
+        """
+        Converts a line from polar to y = mx + b
+        """
+        m = (-cos(theta)/sin(theta)) if sin(theta) != 0 else float("inf")
+        b = rho / sin(theta)
+
+        return m, b
 
 
 def main(args=None):
