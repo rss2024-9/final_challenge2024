@@ -4,12 +4,13 @@ import rclpy
 
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 from nav_msgs.msg import Path, Odometry
 from cv_bridge import CvBridge
 from skimage.morphology import binary_dilation, binary_erosion, skeletonize, square
 from math import pi, cos, sin, atan2, isnan
 from scipy.spatial.transform import Rotation as R
+from tf_transformations import euler_from_quaternion, quaternion_from_euler
 
 
 # Pixels
@@ -54,7 +55,7 @@ class LaneDetector(Node):
             np.array(HOMOGRAPHY_IMAGE_PLANE)[:, np.newaxis, :],
             np.array(HOMOGRAPHY_GROUND_PLANE)[:, np.newaxis, :] * METERS_PER_INCH,
         )
-        self.lane_pub = self.create_publisher(Path, "track_lane", 1)
+        self.lane_pub = self.create_publisher(PoseArray, "/trajectory/current", 1)
 
         # Using frames causes segfaults (ros is stupid and does not work) so we do it manually
         if self.simulation:
@@ -87,13 +88,18 @@ class LaneDetector(Node):
             cv.circle(viz, (x, y), 3, (0, 0, 255), -1)
 
             # Visualize but make it ~ 3D ~
-            msg2 = Path()
+            # msg2 = Path()
 
-            msg2.header.frame_id = "map"
-            msg2.header.stamp = self.get_clock().now().to_msg()
-            msg2.poses = []
+            # msg2.header.frame_id = "map"
+            # msg2.header.stamp = self.get_clock().now().to_msg()
+            # msg2.poses = []
 
-            for y in range(150, 200, 5):
+            msg = PoseArray()
+            msg.header.frame_id = "map"
+            msg.header.stamp = self.get_clock().now().to_msg()
+
+            #for y in range(150, 200, 5):
+            for y in np.array([150,200]):
                 x = (y - b) / m
                 x, y = self.homography_transform(x, y)
 
@@ -102,15 +108,17 @@ class LaneDetector(Node):
                 if self.simulation:
                     x, y, _ = self.car[1].apply(np.array([x, y, 0])) + self.car[0]
 
-                p = PoseStamped()
-                p.header.frame_id = "map"
-                p.header.stamp = msg2.header.stamp
-                p.pose.position.x = float(x)
-                p.pose.position.y = float(y)
-                p.pose.position.z = 0.0
-                msg2.poses.append(p)
+                # p = PoseStamped()
+                # p.header.frame_id = "map"
+                # p.header.stamp = msg2.header.stamp
+                # p.pose.position.x = float(x)
+                # p.pose.position.y = float(y)
+                # p.pose.position.z = 0.0
+                # msg2.poses.append(p)
+                msg.poses.append(LaneDetector.pose_to_msg(x, y, 0.0))
+            self.lane_pub.publish(msg)
 
-            self.lane_pub.publish(msg2)
+            self.lane_pub.publish(msg)
         
         self.debug_image_pub.publish(self.bridge.cv2_to_imgmsg(viz, "bgr8"))
     
@@ -252,6 +260,21 @@ class LaneDetector(Node):
         b = rho / sin(theta)
 
         return m, b
+    
+    @staticmethod
+    def pose_to_msg(x, y, theta):
+        msg = Pose()
+        msg.position.x = float(x)
+        msg.position.y = float(y)
+        msg.position.z = 0.0
+        
+        quaternion = quaternion_from_euler(0.0, 0.0, theta)
+        msg.orientation.x = quaternion[0]
+        msg.orientation.y = quaternion[1]
+        msg.orientation.z = quaternion[2]
+        msg.orientation.w = quaternion[3]
+
+        return msg
 
 
 def main(args=None):
