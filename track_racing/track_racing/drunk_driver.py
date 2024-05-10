@@ -9,14 +9,14 @@ class DrunkDriver(Node):
         super().__init__("drunk_driver")
         
         # self.drive_pub = self.create_publisher(AckermannDriveStamped, "/drive", 10)
-        self.drive_pub = self.create_publisher(AckermannDriveStamped, "/vesc/input/navigation", 10)
+        self.drive_pub = self.create_publisher(AckermannDriveStamped, "/vesc/high_level/input/nav_2", 10)
         self.timer = self.create_timer(1 / 20, self.timer_cb)
 
     def timer_cb(self):
         msg = AckermannDriveStamped()
         msg.header.frame_id = "base_link"
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.drive.speed = 2.0
+        msg.drive.speed = 1.0
         msg.drive.steering_angle = 0.0
 
         self.drive_pub.publish(msg)
