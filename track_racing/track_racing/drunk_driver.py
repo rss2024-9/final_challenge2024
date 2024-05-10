@@ -16,7 +16,7 @@ class DrunkDriver(Node):
         msg = AckermannDriveStamped()
         msg.header.frame_id = "base_link"
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.drive.speed = 2.0
+        msg.drive.speed = 1.0
         msg.drive.steering_angle = 0.0
 
         self.drive_pub.publish(msg)
