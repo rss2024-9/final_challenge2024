@@ -60,7 +60,7 @@ class CityStoppingController(Node):
         self.create_subscription(PointStamped, "/clicked_point", self.clicked_callback, 1)
 
         self.stop_pub = self.create_publisher(AckermannDriveStamped, self.STOP_TOPIC, 1)
-        self.error_pub = self.create_publisher(Float32,"city_stop_error",1)
+        self.error_pub = self.create_publisher(Float32,"/city_stop_error",1)
         self.marker_pub = self.create_publisher(Marker, "/stop_light_marker", 1)
         
         #initiallize default last car pose to (0,0,0)
@@ -116,9 +116,9 @@ class CityStoppingController(Node):
 
         self.marker_pub.publish(marker)
         
-    # def timer_callback(self):
-    #     #attempt to fix stuttering
-    #     self.stop_pub.publish(self.last_drive_command) #this might cause issues
+    def timer_callback(self):
+        #attempt to fix stuttering
+        self.stop_pub.publish(self.last_drive_command) #this might cause issues
 
     def log_drive_command(self,msg):
         """
