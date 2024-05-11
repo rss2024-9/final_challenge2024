@@ -116,9 +116,9 @@ class CityStoppingController(Node):
 
         self.marker_pub.publish(marker)
         
-    def timer_callback(self):
-        #attempt to fix stuttering
-        self.stop_pub.publish(self.last_drive_command) #this might cause issues
+    # def timer_callback(self):
+    #     #attempt to fix stuttering
+    #     self.stop_pub.publish(self.last_drive_command) #this might cause issues
 
     def log_drive_command(self,msg):
         """
