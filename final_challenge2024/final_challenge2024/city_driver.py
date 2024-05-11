@@ -6,6 +6,7 @@ import numpy as np
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, PoseArray,PointStamped
 import time
+from .utils import LineTrajectory
 
 
 class CityDriver(Node):
@@ -45,6 +46,14 @@ class CityDriver(Node):
             10
         )
 
+        self.trajectory = LineTrajectory("/followed_trajectory")
+        self.traj_pub = self.create_publisher(
+            PoseArray,
+            "/trajectory/current",
+            10
+        )
+        self.stop_sub = self.create_subscription(PoseArray,"/stop_stupid",self.stop_cb,1)
+
         self.viz_timer = self.create_timer(1/5, self.motion_cb)
         self.path = None
         self.pub_start = True
@@ -61,18 +70,22 @@ class CityDriver(Node):
         p2 = np.array((x2,y2))
         return np.linalg.norm(car_xy_pos-p2) <= self.stopping_dist
     
+    def stop_cb(self,msg):
+        self.state = "wait"
+        curr_time = time.time()
+        self.wait_time = curr_time
 
 
     def localize_cb(self, odom_msg):
         self.curr_pose = odom_msg
 
-        #if at goal, wait for shell to be placed
-        if (self.curr_pose and self.end_point) and self.is_close(self.curr_pose,self.end_point):
+        # #if at goal, wait for shell to be placed
+        # if (self.curr_pose and self.end_point) and self.is_close(self.curr_pose,self.end_point):
             
-            if self.wait_time == 0:
-                self.state = "wait_start"
-                curr_time = time.time()
-                self.wait_time = curr_time
+        #     if self.wait_time == 0:
+        #         self.state = "wait"
+        #         curr_time = time.time()
+        #         self.wait_time = curr_time
 
 
     def trajectory_callback(self,msg):
@@ -190,6 +203,11 @@ class CityDriver(Node):
         #cleare path variable just in case
         self.path=None
 
+    def send_goal(self,pose):
+        msg = PoseArray()
+        msg.poses.append(pose)
+        self.traj_pub.publish(msg)
+
     def motion_cb(self):
         """
         State machine main function. while there are goals to get to move through start state, to drive, 
@@ -202,32 +220,34 @@ class CityDriver(Node):
                 #self.get_logger().info("went through start")
                 self.state = "drive"
                 self.end_point = self.goals.pop(0)
-                self.path_plan(self.end_point)
+                self.send_goal(self.end_point)
                 #self.publish_path()
                 
             elif self.state == "drive":
                 #self.get_logger().info("driving")
                 pass 
-            elif self.state == "wait_start":
-                #self.get_logger().info("in wait start")
-                self.end_point = self.goals.pop(0)
-                self.path_plan(self.end_point)
-                self.state="wait"
+            # elif self.state == "wait_start":
+            #     #self.get_logger().info("in wait start")
+            #     self.end_point = self.goals.pop(0)
+            #     self.path_plan(self.end_point)
+            #     self.state="wait"
             elif self.state == "wait":
                 #self.get_logger().info("in wait")
                 curr_time = time.time()
-                if (curr_time - self.wait_time ) >=self.max_wait and self.path:
-                    self.publish_path()
+                if (curr_time - self.wait_time ) >=self.max_wait: #and self.path:
+                    self.end_point = self.goals.pop(0)
+                    self.send_goal(self.end_point)
                     self.state = "drive"
                     self.wait_time = 0
             else:
                 pass
-        elif not self.goals and self.path is not None:
-            #wait to publish return to start path until after last shell is placed
-            curr_time = time.time()
-            if (curr_time - self.wait_time ) >=self.max_wait and self.path:
-                self.publish_path()
-                #self.get_logger().info("returning to start")
+        
+        # elif not self.goals and self.path is not None:
+        #     #wait to publish return to start path until after last shell is placed
+        #     curr_time = time.time()
+        #     if (curr_time - self.wait_time ) >=self.max_wait and self.path:
+        #         self.publish_path()
+        #         #self.get_logger().info("returning to start")
         
 
 
