@@ -134,7 +134,6 @@ class CityStoppingController(Node):
             self.stopsign_cooldown-=1
         else: #stopsign cooldown complete
             #reset
-            self.get_logger().info("READY TO STOP")
             self.ignore_stopsigns = False
             self.stopsign_brake_time = 30
             self.stopsign_cooldown = 30
@@ -181,8 +180,6 @@ class CityStoppingController(Node):
         y = msg.y_pos
 
         obj_dist = np.sqrt(x**2 + y**2)
-        self.get_logger().info("STOPPING FOR STOP SIGN")
-
 
         if obj_dist <= (total_stop_d + threshold) and self.stopsign_brake_time:
             #start braking
@@ -191,13 +188,13 @@ class CityStoppingController(Node):
             self.error_pub.publish(error_msg)
             self.stop_msg.header.stamp = self.get_clock().now().to_msg()
             self.stop_msg.drive.steering_angle = self.last_drive_command.drive.steering_angle
-            self.get_logger().info("BRAKING")
+            
+            self.get_logger().info("STOP! Breaking...")
 
             #TODO: find way to make it come to a full stop and then continue on without reacting to same stop sign
             self.stop_pub.publish(self.stop_msg)
             self.stopsign_brake_time -= 1 #stop for about one second (callback runs at 10Hz)
         elif obj_dist <= (total_stop_d + threshold) and not self.stopsign_brake_time and self.stopsign_cooldown: #within range and done braking, start cooldown
-            self.get_logger().info("START IGNORE")
             self.ignore_stopsigns=True #start cooldown
             
 
@@ -229,7 +226,7 @@ class CityStoppingController(Node):
             self.stop_msg.header.stamp = self.get_clock().now().to_msg()
             self.stop_msg.drive.steering_angle = self.last_drive_command.drive.steering_angle
             self.stop_pub.publish(self.stop_msg)
-            self.get_logger().info("STOPPING FOR STOP LIGHT")
+            self.get_logger().info("LIGHT! Breaking...")
 
 
 def main():
