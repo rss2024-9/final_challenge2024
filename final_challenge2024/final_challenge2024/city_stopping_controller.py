@@ -3,11 +3,12 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import LaserScan
 from ackermann_msgs.msg import AckermannDriveStamped
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from math import pi
 from std_msgs.msg import Float32, Bool
 from nav_msgs.msg import Odometry
 from stop_msgs.msg import PhysicalLocation
+from geometry_msgs.msg import PointStamped
 
 # from safety_controller_pkg.visualization_tools import VisualizationTools
 
@@ -24,9 +25,9 @@ class CityStoppingController(Node):
 
         #approx. locations of stoplights (classroom, hallway, vending machines) on map
         # self.stoplight_coords = [(10.4,16.6),(29.2,-34.1), (54.7,-22.9)]
-        self.light_1_pose = (10.4,16.6)
-        self.light_2_pose = (29.2,-34.1)
-        self.light_3_pose = (54.7,-22.9)
+        self.light_1_pose = (-10.8, 16.7)
+        self.light_2_pose = (-31.2, 33.8)
+        self.light_3_pose = (-55.1, 24.1)
 
         #set default euclid dists to all stoplights
         self.stoplight_1_dist = float('inf')
@@ -54,10 +55,11 @@ class CityStoppingController(Node):
         self.stopsign_subscriber = self.create_subscription(PhysicalLocation, '/relative_stopsign', self.on_stopsign, 10)
         self.detects_stoplight = self.create_subscription(Bool, '/detects_stoplight', self.on_stoplight, 10)
         self.ground_truth_subscriber = self.create_subscription(Odometry, '/pf/pose/odom', self.log_car_pose, 1)
-
+        self.create_subscription(PointStamped, "/clicked_point", self.clicked_callback, 1)
 
         self.stop_pub = self.create_publisher(AckermannDriveStamped, self.STOP_TOPIC, 1)
         self.error_pub = self.create_publisher(Float32,"city_stop_error",1)
+        self.marker_pub = self.create_publisher(Marker, "/stop_light_marker", 1)
         
         #initiallize default last car pose to (0,0,0)
         self.last_car_pose = Odometry()
@@ -79,8 +81,38 @@ class CityStoppingController(Node):
         self.stop_msg.drive.speed = 0.0
         self.stop_msg.drive.steering_angle = 0.0
 
+        # markers = MarkerArray()
+        for (id, (x, y)) in enumerate([self.light_1_pose, self.light_2_pose, self.light_3_pose, (1.0, 1.0)]):
+            # markers.markers.append(self.draw_marker(x, y, id))
+            self.draw_marker(x, y, id)
+        # self.marker_pub.publish(markers)
+
         self.get_logger().info("started up city stopping node")
 
+    def clicked_callback(self, msg):
+        self.get_logger().info(f"{msg.point.x}, {msg.point.y}")
+
+    def draw_marker(self, x, y, id):
+        """
+        Publish a marker to represent the stop light in rviz
+        """
+        marker = Marker()
+        marker.header.frame_id = "/map"
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.type = marker.CYLINDER
+        marker.action = marker.ADD
+        marker.scale.x = .2
+        marker.scale.y = .2
+        marker.scale.z = .2
+        marker.color.a = 1.0
+        marker.color.r = 1.0
+        marker.id = id
+        marker.pose.orientation.w = 1.0
+        marker.pose.position.x = x
+        marker.pose.position.y = y
+        marker.pose.position.z = 0.0
+
+        self.marker_pub.publish(marker)
 
     def log_drive_command(self,msg):
         """
