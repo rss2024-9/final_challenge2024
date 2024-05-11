@@ -13,7 +13,12 @@ class LaneFollower(Node):
         super().__init__("lane_follower")
 
         self.simulation = self.declare_parameter("simulation", True).get_parameter_value().bool_value
+        
+        # Topics
         self.drive_topic = "/drive" if self.simulation else "/vesc/input/navigation"
+
+        # Configuration
+        
         
 	    # Publishers and subscribers
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 10)
