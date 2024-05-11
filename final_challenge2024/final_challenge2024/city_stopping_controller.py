@@ -21,8 +21,8 @@ class CityStoppingController(Node):
         self.timer = self.create_timer(1 / hz, self.timer_callback)
 
         # Declare parameters to make them available for use
-        self.declare_parameter("drive_topic", "/drive") 
-        self.declare_parameter("stop_topic","/drive")
+        self.declare_parameter("drive_topic", "/vesc/high_level/output") 
+        self.declare_parameter("stop_topic","/vesc/low_level/input/safety")
         self.declare_parameter("base_frame", "/base_link")
 
         #approx. locations of stoplights (classroom, hallway, vending machines) on map
