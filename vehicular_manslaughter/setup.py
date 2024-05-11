@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'path_planner = vehicular_manslaughter.path_planner:main'
+            'path_planner = vehicular_manslaughter.path_planner:main',
+            'path_follower = vehicular_manslaughter.path_follower:main',
         ],
     },
 )

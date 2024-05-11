@@ -5,7 +5,7 @@ ros2 run vehicular_manslaughter path_planner
 ```
 Launch the path follower:
 ```bash
-ros2 run path_planning trajectory_follower --ros-args -p drive_topic:="/drive"
+ros2 run vehicular_manslaughter path_follower
 ```
 Launch the simulator:
 ```bash

@@ -18,6 +18,7 @@ STATA_SCALING = 0.0504
 STATA_ORIGIN = [25.900000, 48.50000]
 STATA_PATH = "/home/racecar/racecar_ws/src/final_challenge2024/vehicular_manslaughter/map/stata_basement.png"
 CENTER_LINE_PATH = "/home/racecar/racecar_ws/src/final_challenge2024/vehicular_manslaughter/map/full-lane.traj"
+N_POINTS = 1
 
 class PathPlanner(Node):
     def __init__(self):
@@ -38,7 +39,8 @@ class PathPlanner(Node):
             self.cline = subdivide_path(self.irl_to_pixel(cline), 4).astype(int)
         
         # State
-        self.start = None
+        self.start = np.zeros(2)
+        self.points = []
 
         # Subscriptions
         self.create_subscription(PointStamped, "/clicked_point", self.click_cb, 1)
@@ -58,50 +60,68 @@ class PathPlanner(Node):
         """Short-hand for logging messages"""
         self.get_logger().info(str(s))
 
-    def path_plan(self, start, goal):
+    def path_plan(self):
         """
         Path plan, this method expects and returns pixel coordinates (y, x)
         """
-        # Compute the path endpoints along the center line
-        i, closest_start = closest_point_on_path((start[1], start[0]), self.cline)
-        j, closest_end = closest_point_on_path((goal[1], goal[0]), self.cline)
+        points = [self.start, *self.points]
+        path = []
 
-        # Compute the path along the center line
-        cline_path = self.cline[i+1:j+1] if j > i else self.cline[j+1:i+1][::-1]
-        # Offset to drive on the right side of the road
-        cline_path = offset_path(cline_path, -5)
-        # Convert to (y, x) for consistency with a-star
-        cline_path = [(y, x) for (x, y) in cline_path]
+        for (k, (start, goal)) in enumerate(zip(points, points[1:])):
+            # Compute the path endpoints along the center line
+            if k == 0:
+                i, closest_start = closest_point_on_path((start[1], start[0]), self.cline)
+            else:
+                # Otherwise recyle last one
+                i, closest_start = j, closest_end
+            j, closest_end = closest_point_on_path((goal[1], goal[0]), self.cline)
 
-        # Compute the path from start point to center line, and center line to endpoint
-        start_path = self.astar.astar(start, closest_start.astype(int)[::-1])
-        end_path = self.astar.astar(closest_end.astype(int)[::-1], goal)
+            # Compute the path along the center line
+            cline_path = self.cline[i+1:j+1] if j > i else self.cline[j+1:i+1][::-1]
+            # Offset to drive on the right side of the road
+            cline_path = offset_path(cline_path, -5)
+            # Convert to (y, x) for consistency with a-star
+            cline_path = [(y, x) for (x, y) in cline_path]
 
-        if start_path is None:
-            print("No path found from start point to center line!")
-            return
-        if end_path is None:
-            print("No path found from center line to end point!")
-            return
+            # Compute the path from start point to center line, and center line to endpoint
+            if k == 0:
+                start_path = self.astar.astar(start, closest_start.astype(int)[::-1])
+            else:
+                start_path = end_path[::-1]
+            end_path = self.astar.astar(closest_end.astype(int)[::-1], goal)
 
-        # Concatenate all paths
-        return np.array(list(start_path) + cline_path + list(end_path))
+            if start_path is None:
+                print("No path found from start point to center line!")
+                return
+            if end_path is None:
+                print("No path found from center line to end point!")
+                return
+
+            # Go in reverse on start paths, forward on other paths
+            start_path_z = [(y, x, 0 if k == 0 else 1) for (y, x) in start_path]
+            cline_path_z = [(y, x, 0) for (y, x) in cline_path]
+            end_path_z = [(y, x, 0) for (y, x) in end_path]
+
+            path += start_path_z + cline_path_z + end_path_z
+        return np.array(path)
 
     def click_cb(self, msg: PointStamped):
-        if self.start is None:
-            return
-        
         x, y = self.irl_to_pixel([msg.point.x, msg.point.y])
         
-        # Compute the path in pixels (y, x) -> (x, y)
-        path = self.path_plan(self.start, (y, x))
-        if path is None:
-            return
-        path = path[:, [1, 0]]
+        self.points.append((y, x))
 
-        # Publish
-        self.path_viz.publish(self.create_path_msg(path))
-        self.path_pub.publish(self.create_pose_array_msg(path))
+        if len(self.points) >= N_POINTS:
+            # Compute the path in pixels (y, x) -> (x, y)
+            path = self.path_plan()
+            if path is None:
+                return
+            path = path[:, [1, 0, 2]]
+
+            self.log("Path planned!")
+
+            # Publish
+            self.path_viz.publish(self.create_path_msg(path))
+            self.path_pub.publish(self.create_pose_array_msg(path))
 
     def odom_cb(self, msg: Odometry):
         pos = msg.pose.pose.position
@@ -109,6 +129,10 @@ class PathPlanner(Node):
             return
         x, y = self.irl_to_pixel([pos.x, pos.y])
 
+        if sum((self.start - np.array([y, x])) ** 2) > 2:
+            self.points = []
+            self.log("Reset the path!")
+        
         self.start = (y, x)
 
     def pixel_to_irl(self, p):
@@ -142,15 +166,15 @@ class PathPlanner(Node):
 
         msg.header.frame_id = "/map"
         msg.header.stamp = self.get_clock().now().to_msg()
-        for p in points:
-            x, y = self.pixel_to_irl(p)
+        for (x, y, *_) in points:
+            x, y = self.pixel_to_irl((x, y))
             
             pose = PoseStamped()
             pose.header.frame_id = msg.header.frame_id
             pose.header.stamp = msg.header.stamp
             pose.pose.position.x = x
             pose.pose.position.y = y
-            pose.pose.position.z = 0.1
+            pose.pose.position.z = 0.0
             pose.pose.orientation.w = 1.0
 
             msg.poses.append(pose)
@@ -164,13 +188,13 @@ class PathPlanner(Node):
 
         msg.header.frame_id = "/map"
         msg.header.stamp = self.get_clock().now().to_msg()
-        for p in points:
-            x, y = self.pixel_to_irl(p)
+        for (x, y, z) in points:
+            x, y = self.pixel_to_irl((x, y))
             
             pose = Pose()
             pose.position.x = x
             pose.position.y = y
-            pose.position.z = 0.1
+            pose.position.z = z
             pose.orientation.w = 1.0
 
             msg.poses.append(pose)

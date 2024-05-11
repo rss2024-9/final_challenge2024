@@ -34,6 +34,7 @@ Launch the track lane detector:
 ros2 launch track_racing track_racing_real.launch.xml
 ```
 *THE COMMAND THAT WINS*
+m: 0.26, b: 0.33
 ```bash
 ros2 run track_racing lane_follower --ros-args -p simulation:=false -p b_pid:="(-0.15, 0, 0)" -p m_pid:="(-0.15, 0, -0.075)" -p max_steer:=5.0 -p velocity:=4.0
 ```
