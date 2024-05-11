@@ -19,7 +19,7 @@ class PurePursuit(Node):
     def __init__(self):
         super().__init__("trajectory_follower")
         self.declare_parameter('odom_topic', "default")
-        self.declare_parameter('drive_topic', "drive")
+        self.declare_parameter('drive_topic', "/vesc/input/navigation")
 
         self.odom_topic = self.get_parameter('odom_topic').get_parameter_value().string_value
         self.drive_topic = self.get_parameter('drive_topic').get_parameter_value().string_value
@@ -272,22 +272,22 @@ class PurePursuit(Node):
             return
         self.get_logger().info(f'min ind{min_index}')
         self.get_logger().info(f'min ind goal{min_index_goal}')
-        # if (min_index_goal<min_index) and (np.linalg.norm(car_xy_pos-nearest_segment[0,:])>3): #uturn
-        #     steering_angle = -0.34
-        #     drive_msg = AckermannDriveStamped()
-        #     drive_msg.drive.speed = self.speed 
-        #     drive_msg.drive.steering_angle = steering_angle
-        #     self.drive_pub.publish(drive_msg)
-        #     time.sleep(0.668/self.speed)
+        if (min_index_goal<min_index) and (np.linalg.norm(car_xy_pos-nearest_segment[0,:])>3): #uturn
+            steering_angle = -0.34
+            drive_msg = AckermannDriveStamped()
+            drive_msg.drive.speed = self.speed 
+            drive_msg.drive.steering_angle = steering_angle
+            self.drive_pub.publish(drive_msg)
+            time.sleep(0.668/self.speed)
 
-        #     steering_angle = 0.34
-        #     drive_msg = AckermannDriveStamped()
-        #     drive_msg.drive.speed = self.speed 
-        #     drive_msg.drive.steering_angle = steering_angle
-        #     self.drive_pub.publish(drive_msg)
-        #     time.sleep(3.338/self.speed)
+            steering_angle = 0.34
+            drive_msg = AckermannDriveStamped()
+            drive_msg.drive.speed = self.speed 
+            drive_msg.drive.steering_angle = steering_angle
+            self.drive_pub.publish(drive_msg)
+            time.sleep(3.338/self.speed)
             
-        #     return 
+            return 
 
 
             
