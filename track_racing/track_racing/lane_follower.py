@@ -14,22 +14,26 @@ class LaneFollower(Node):
 
         self.simulation = self.declare_parameter("simulation", True).get_parameter_value().bool_value
         
-        # Topics
+        # Topics & Argments
         self.drive_topic = "/drive" if self.simulation else "/vesc/input/navigation"
+        self.velocity = self.declare_parameter("velocity", 3.0).get_parameter_value().double_value
+        self.distance_pid_params = self.declare_parameter("b_pid", "(1.0, 0.0, 0.0)").get_parameter_value().string_value
+        self.slope_pid_params = self.declare_parameter("m_pid", "(1.0, 0.0, 0.0)").get_parameter_value().string_value
+        self.distance_pid_setpoint = 0.25
+        self.slope_pid_setpoint = 0.2
 
-        # Configuration
-        
-        
+        # PID
+        self.distance_pid = PID(self, *LaneFollower.parse_pid(self.distance_pid_params))
+        self.slope_pid = PID(self, *LaneFollower.parse_pid(self.slope_pid_params))
+
 	    # Publishers and subscribers
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 10)
         self.lane_sub = self.create_subscription(PoseArray, "/trajectory/current", self.lane_cb, 1)
 
-        # Callback functions here
-        # self.timer = self.create_timer(1 / 20, self.on_tick)
-
-        # State
-        # self.distance_pid = PID(self, self.P_0, self.I_0, self.D_0)
-        # self.slope_pid = PID(self, self.P_1, self.I_1, self.D_1)
+        self.log(f"Initialized the lane follower:")
+        self.log(f"    Velocity: {self.velocity}")
+        self.log(f"    Distance PID: {self.distance_pid_params}")
+        self.log(f"    Slope PID: {self.slope_pid_params}")
 
     @staticmethod
     def parse_pid(arg: str):
@@ -38,29 +42,7 @@ class LaneFollower(Node):
     def log(self, s):
         """Short-hand for logging messages"""
         self.get_logger().info(str(s))
-
-    def on_tick(self):
-        self.get_logger().info("Wall follower is running...")
-
-        msg = AckermannDriveStamped()
-
-        # Blend distance and slope controllers
-        if self.distance_pid.control is None:
-            return
-        control = self.distance_pid.control + self.slope_pid.control
-
-        msg.header.frame_id = self.BASE_FRAME
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.drive.speed = self.VELOCITY * max(1 - 0.02 * control ** 4, 0.5)
-        msg.drive.steering_angle = -control
-
-        # Stop moving for 0.5s when a teleport is detected (i.e. test cases)
-        if (self.get_clock().now().nanoseconds - self.cooldown) * 1e-9 < 0.5:
-            msg.drive.speed = 0.0
-            msg.drive.steering_angle = 0.0
-
-        self.drive_publisher.publish(msg)
-
+    
     def lane_cb(self, msg: PoseArray):
         # Least-squares
         x = np.array([p.position.x for p in msg.poses])
@@ -68,17 +50,34 @@ class LaneFollower(Node):
         n = len(x)
         if n == 0:
             return
-        m = (n * sum(x * y) - sum(x) * sum(y)) / (n * sum(x ** 2) - sum(x) ** 2)
+        d = (n * sum(x ** 2) - sum(x) ** 2)
+        if d == 0:
+            return
+        m = (n * sum(x * y) - sum(x) * sum(y)) / d
         b = (sum(y) - m * sum(x)) / n
 
         if np.isnan(m) or np.isnan(b):
             return
 
         self.log((m, b))
-        # VisualizationTools.plot_line(x, y, self.line_pub, frame="/laser")
         
-        # self.distance_pid(self.SIDE * self.DESIRED_DISTANCE - b)
-        # self.slope_pid(-m)
+        # These are determined experimentally by placing the car where it should be on the lane,
+        # and taking note of the (m, b) observed above ^
+        self.distance_pid(self.distance_pid_setpoint - b)
+        self.slope_pid(self.slope_pid_setpoint - m)
+
+        # Create the driving message
+        out = AckermannDriveStamped()
+
+        # Blend distance and slope controllers
+        control = self.distance_pid.control + self.slope_pid.control
+
+        out.header.frame_id = "/base_link"
+        out.header.stamp = self.get_clock().now().to_msg()
+        out.drive.speed = self.velocity
+        out.drive.steering_angle = -control
+
+        self.drive_pub.publish(out)
 
 
 def main():

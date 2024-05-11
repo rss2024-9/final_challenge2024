@@ -18,6 +18,12 @@ ros2 launch zed_wrapper zed_camera.launch.py camera_model:=zed
 ```
 If it errors with something about a display, run `unset DISPLAY` before this command
 
+Download the dependencies (each time the car resets, these are uninstalled for some reason):
+```bash
+# Ignore any errors this throws unless it completely breaks
+pip install scikit-image
+```
+
 Launch the track lane detector:
 ```bash
 ros2 launch track_racing track_racing_real.launch.xml
