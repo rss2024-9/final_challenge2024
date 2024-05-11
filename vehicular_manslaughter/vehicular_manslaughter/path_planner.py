@@ -35,7 +35,7 @@ class PathPlanner(Node):
             cline = [(p["x"], p["y"]) for p in json.load(f)["points"]]
 
             # Make into pixel coordinates
-            self.cline = self.irl_to_pixel(cline).astype(int)
+            self.cline = subdivide_path(self.irl_to_pixel(cline), 4).astype(int)
         
         # State
         self.start = None
@@ -68,6 +68,8 @@ class PathPlanner(Node):
 
         # Compute the path along the center line
         cline_path = self.cline[i+1:j+1] if j > i else self.cline[j+1:i+1][::-1]
+        # Offset to drive on the right side of the road
+        cline_path = offset_path(cline_path, -5)
         # Convert to (y, x) for consistency with a-star
         cline_path = [(y, x) for (x, y) in cline_path]
 
@@ -93,6 +95,8 @@ class PathPlanner(Node):
         
         # Compute the path in pixels (y, x) -> (x, y)
         path = self.path_plan(self.start, (y, x))
+        if path is None:
+            return
         path = path[:, [1, 0]]
 
         # Publish
@@ -238,6 +242,29 @@ def closest_point_on_path(p, path):
             best_d = this_d
             best_i = i
     return best_i, best_p
+
+def subdivide_path(path, n):
+    if n == 1:
+        return np.array(path)
+    out = []
+    for (p0, p1) in zip(path, path[1:]):
+        out.append(p0)
+        out.append((p0 + p1) / 2)
+    out.append(path[-1])
+
+    return subdivide_path(out, n - 1)
+
+def offset_path(path, dist):
+    out = []
+    o = np.zeros(2)
+    for (p0, p1) in zip(path, path[1:]):
+        d = p1 - p0
+        lo = o
+        o = np.array([d[1], -d[0]]) / np.linalg.norm(d)
+        out.append(p0 + (o + lo) * dist)
+    out.append(path[-1] + o * dist)
+
+    return out
 
 def create_occupancy_grid(img):
     img = np.average(img, axis=2)                   # Convert to grey-scale
