@@ -38,7 +38,7 @@ def cd_color_segmentation(img, template):
 	hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
 	#basically kept this the same, will adjust
-	red_low1 = (-10, 191, 198)
+	red_low1 = (0, 191, 198)
 	red_high1 = (10, 255, 255)	
 
 	lower_red2 = (170, 191, 198)  # Adjusted lower range for wrapped values
