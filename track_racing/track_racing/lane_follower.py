@@ -19,8 +19,9 @@ class LaneFollower(Node):
         self.velocity = self.declare_parameter("velocity", 3.0).get_parameter_value().double_value
         self.distance_pid_params = self.declare_parameter("b_pid", "(1.0, 0.0, 0.0)").get_parameter_value().string_value
         self.slope_pid_params = self.declare_parameter("m_pid", "(1.0, 0.0, 0.0)").get_parameter_value().string_value
-        self.distance_pid_setpoint = 0.25
-        self.slope_pid_setpoint = 0.2
+        self.max_steer = self.declare_parameter("max_steer", 15.0).get_parameter_value().double_value * pi / 180
+        self.distance_pid_setpoint = 0.5
+        self.slope_pid_setpoint = 0.3
 
         # PID
         self.distance_pid = PID(self, *LaneFollower.parse_pid(self.distance_pid_params))
@@ -78,7 +79,7 @@ class LaneFollower(Node):
         out.header.frame_id = "/base_link"
         out.header.stamp = self.get_clock().now().to_msg()
         out.drive.speed = self.velocity
-        out.drive.steering_angle = control
+        out.drive.steering_angle = min(self.max_steer, max(-self.max_steer, control))
 
         self.drive_pub.publish(out)
 
