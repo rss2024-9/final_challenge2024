@@ -31,7 +31,10 @@ setup(
             'stop_detector = final_challenge2024.stop_detector:main',
             'track_simulator = final_challenge2024.track_racing.track_simulator:main',
             'yeet_node = final_challenge2024.yeet_node:main',
-            'hello = final_challenge2024.hello:main'
+            'hello = final_challenge2024.hello:main',
+            "city_driver = final_challenge2024.city_driver:main",
+            "basement_pub = final_challenge2024.basement_point_publisher:main",
+            "city_follow = final_challenge2024.trajectory_follower_city:main",
         ],
     },
 )
