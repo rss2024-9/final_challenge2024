@@ -18,8 +18,8 @@ class PurePursuit(Node):
 
     def __init__(self):
         super().__init__("trajectory_follower")
-        self.declare_parameter('odom_topic', "/odom")
-        self.declare_parameter('drive_topic', "drive")
+        self.declare_parameter('odom_topic', "/vesc/odom")
+        self.declare_parameter('drive_topic', "/vesc/input/navigation")
 
         self.odom_topic = self.get_parameter('odom_topic').get_parameter_value().string_value
         self.drive_topic = self.get_parameter('drive_topic').get_parameter_value().string_value
@@ -46,9 +46,9 @@ class PurePursuit(Node):
         
         #subscribe to particle filter localization #turn back on for real car
         #real
-        #self.pose_sub = self.create_subscription(Odometry,"/pf/pose/odom",self.pose_callback, 1)
+        self.pose_sub = self.create_subscription(Odometry,"/pf/pose/odom",self.pose_callback, 1)
         #sim
-        self.pose_sub = self.create_subscription(Odometry,"/odom",self.pose_callback, 1)   
+        #self.pose_sub = self.create_subscription(Odometry,"/odom",self.pose_callback, 1)   
 
         #viz target point
         self.viz_pub = self.create_publisher(PoseArray, "/target_point", 1) 
@@ -72,6 +72,7 @@ class PurePursuit(Node):
 
 
     def pose_callback(self, odometry_msg):
+        #self.get_logger().info("in pose cb")
         car_x = odometry_msg.pose.pose.position.x
         car_y = odometry_msg.pose.pose.position.y
         car_z = odometry_msg.pose.pose.position.z
@@ -84,7 +85,7 @@ class PurePursuit(Node):
         #if there is no trajectory loaded wait
         #self.get_logger().info(f"{np.array(self.trajectory.points)}")
         if np.array(self.trajectory.points).size == 0:
-            self.get_logger().info(f"waiting for trajectory")
+            #self.get_logger().info(f"waiting for trajectory")
             drive_msg = AckermannDriveStamped()
             drive_msg.drive.speed = 0.0 
             drive_msg.drive.steering_angle = 0.0
