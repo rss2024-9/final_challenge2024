@@ -78,7 +78,7 @@ class LaneFollower(Node):
         out.header.frame_id = "/base_link"
         out.header.stamp = self.get_clock().now().to_msg()
         out.drive.speed = self.velocity
-        out.drive.steering_angle = -control
+        out.drive.steering_angle = control
 
         self.drive_pub.publish(out)
 
