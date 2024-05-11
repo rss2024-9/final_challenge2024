@@ -76,7 +76,7 @@ class CityDriver(Node):
 
 
     def trajectory_callback(self,msg):
-        self.get_logger().info("in traj cb")
+        #self.get_logger().info("in traj cb")
         self.path = msg
         #publish path immediately if starting
         if self.pub_start:
@@ -138,7 +138,7 @@ class CityDriver(Node):
         ##All of the above is for tests
 
         #!TODO take in PoseArray of goal points and put them in instance variable, also add start point
-        self.get_logger().info("made it in here")
+        #self.get_logger().info("made it in here")
         temp=[]
         for point in msg.poses:
             new_pose = PoseStamped()
@@ -156,7 +156,7 @@ class CityDriver(Node):
         return_point.pose.orientation.w = start.pose.pose.orientation.w
         temp.append(return_point)
         self.goals=temp
-        self.get_logger().info("got goal points, starting state machine")
+        #self.get_logger().info("got goal points, starting state machine")
         self.state="start"
 
     def path_plan(self,goal):
@@ -199,22 +199,22 @@ class CityDriver(Node):
         if self.goals:
             
             if self.state == "start" :
-                self.get_logger().info("went through start")
+                #self.get_logger().info("went through start")
                 self.state = "drive"
                 self.end_point = self.goals.pop(0)
                 self.path_plan(self.end_point)
                 #self.publish_path()
                 
             elif self.state == "drive":
-                self.get_logger().info("driving")
+                #self.get_logger().info("driving")
                 pass 
             elif self.state == "wait_start":
-                self.get_logger().info("in wait start")
+                #self.get_logger().info("in wait start")
                 self.end_point = self.goals.pop(0)
                 self.path_plan(self.end_point)
                 self.state="wait"
             elif self.state == "wait":
-                self.get_logger().info("in wait")
+                #self.get_logger().info("in wait")
                 curr_time = time.time()
                 if (curr_time - self.wait_time ) >=self.max_wait and self.path:
                     self.publish_path()
@@ -227,7 +227,7 @@ class CityDriver(Node):
             curr_time = time.time()
             if (curr_time - self.wait_time ) >=self.max_wait and self.path:
                 self.publish_path()
-                self.get_logger().info("returning to start")
+                #self.get_logger().info("returning to start")
         
 
 
