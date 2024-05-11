@@ -9,7 +9,7 @@ import numpy as np
 import math
 import time
 
-from .city_driving.trajectory_follower.utils import LineTrajectory
+from .utils import LineTrajectory
 
 
 class PurePursuit(Node):
