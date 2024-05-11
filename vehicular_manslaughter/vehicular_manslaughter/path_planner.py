@@ -41,8 +41,8 @@ class PathPlanner(Node):
         self.start = None
 
         # Subscriptions
-        self.create_subscription(PointStamped, "/clicked_point", self.click_cb, 1)
-        self.create_subscription(Odometry, "/odom", self.odom_cb, 1)
+        self.create_subscription(PointStamped, "/goal_pose", self.click_cb, 1)
+        self.create_subscription(Odometry, "/pf/pose/odom", self.odom_cb, 1)
 
         # Publishers
         self.cline_viz = self.create_publisher(Path, "center_line", 1)
