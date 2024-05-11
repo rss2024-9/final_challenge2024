@@ -66,6 +66,9 @@ class LaneFollower(Node):
         self.distance_pid(self.distance_pid_setpoint - b)
         self.slope_pid(self.slope_pid_setpoint - m)
 
+        if self.distance_pid.control is None:
+            return
+
         # Create the driving message
         out = AckermannDriveStamped()
 
