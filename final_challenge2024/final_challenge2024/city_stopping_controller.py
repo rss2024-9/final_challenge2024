@@ -16,6 +16,8 @@ from stop_msgs.msg import PhysicalLocation
 class CityStoppingController(Node):
     def __init__(self):
         super().__init__("city_stopping_controller")
+        hz = 20
+        self.timer = self.create_timer(1 / hz, self.timer_callback)
 
         # Declare parameters to make them available for use
         self.declare_parameter("drive_topic", "/drive") 
@@ -26,7 +28,7 @@ class CityStoppingController(Node):
         # self.stoplight_coords = [(10.4,16.6),(29.2,-34.1), (54.7,-22.9)]
         self.light_1_pose = (10.4,16.6)
         self.light_2_pose = (29.2,-34.1)
-        self.light_3_pose = (54.7,-22.9)
+        self.light_3_pose = (54.7,-22.9) #might need to flip signs?? already flipped
 
         #set default euclid dists to all stoplights
         self.stoplight_1_dist = float('inf')
@@ -80,7 +82,10 @@ class CityStoppingController(Node):
         self.stop_msg.drive.steering_angle = 0.0
 
         self.get_logger().info("started up city stopping node")
-
+        
+    def timer_callback(self):
+        #attempt to fix stuttering
+        self.stop_pub.publish(self.last_drive_command) #this might cause issues
 
     def log_drive_command(self,msg):
         """
@@ -181,11 +186,6 @@ class CityStoppingController(Node):
         radius = total_stop_d + threshold
 
         detects_stoplight = msg.data
-
-        # x = self.last_car_pose.pose.pose.position.point.x
-        # y = self.last_car_pose.pose.pose.position.point.y
-        
-        # obj_dist = np.sqrt(x**2 + y**2)
 
         if detects_stoplight and (self.light_1_pose <= radius or self.light_2_pose <= radius or self.light_3_pose <= radius):
             # error_msg = Float32()
