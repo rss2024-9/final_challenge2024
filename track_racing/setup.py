@@ -28,6 +28,7 @@ setup(
             'track_simulator = track_racing.track_simulator:main',
             'lane_detector = track_racing.lane_detector:main',
             'drunk_driver = track_racing.drunk_driver:main',
+            'lane_follower = track_racing.lane_follower:main',
         ],
     },
 )
