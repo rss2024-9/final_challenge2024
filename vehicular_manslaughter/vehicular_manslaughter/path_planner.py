@@ -6,11 +6,12 @@ import cv2 as cv
 import json
 
 from rclpy.node import Node
-from geometry_msgs.msg import PointStamped, PoseStamped
-from nav_msgs.msg import Path
+from geometry_msgs.msg import PointStamped, PoseStamped, PoseArray, Pose
+from nav_msgs.msg import Path, Odometry
 
 from skimage.transform import rescale
 from astar import AStar
+from math import isnan
 
 DOWNSAMPLE = 8
 STATA_SCALING = 0.0504
@@ -41,10 +42,13 @@ class PathPlanner(Node):
 
         # Subscriptions
         self.create_subscription(PointStamped, "/clicked_point", self.click_cb, 1)
+        self.create_subscription(Odometry, "/odom", self.odom_cb, 1)
 
         # Publishers
         self.cline_viz = self.create_publisher(Path, "center_line", 1)
         self.path_viz = self.create_publisher(Path, "computed_path", 1)
+        self.path_pub = self.create_publisher(PoseArray, "/trajectory/current", 1)
+
         self.cline_viz.publish(self.create_path_msg(self.cline))
 
         # OK!
@@ -82,11 +86,10 @@ class PathPlanner(Node):
         return np.array(list(start_path) + cline_path + list(end_path))
 
     def click_cb(self, msg: PointStamped):
-        x, y = self.irl_to_pixel([msg.point.x, msg.point.y])
-
         if self.start is None:
-            self.start = (y, x)
             return
+        
+        x, y = self.irl_to_pixel([msg.point.x, msg.point.y])
         
         # Compute the path in pixels (y, x) -> (x, y)
         path = self.path_plan(self.start, (y, x))
@@ -94,6 +97,15 @@ class PathPlanner(Node):
 
         # Publish
         self.path_viz.publish(self.create_path_msg(path))
+        self.path_pub.publish(self.create_pose_array_msg(path))
+
+    def odom_cb(self, msg: Odometry):
+        pos = msg.pose.pose.position
+        if isnan(pos.x) or isnan(pos.y):
+            return
+        x, y = self.irl_to_pixel([pos.x, pos.y])
+
+        self.start = (y, x)
 
     def pixel_to_irl(self, p):
         p = np.copy(p).astype(float)
@@ -136,6 +148,26 @@ class PathPlanner(Node):
             pose.pose.position.y = y
             pose.pose.position.z = 0.1
             pose.pose.orientation.w = 1.0
+
+            msg.poses.append(pose)
+        return msg
+    
+    def create_pose_array_msg(self, points):
+        """
+        Expects pixel coordinates (x, y)
+        """
+        msg = PoseArray()
+
+        msg.header.frame_id = "/map"
+        msg.header.stamp = self.get_clock().now().to_msg()
+        for p in points:
+            x, y = self.pixel_to_irl(p)
+            
+            pose = Pose()
+            pose.position.x = x
+            pose.position.y = y
+            pose.position.z = 0.1
+            pose.orientation.w = 1.0
 
             msg.poses.append(pose)
         return msg
