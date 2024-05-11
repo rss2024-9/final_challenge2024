@@ -26,9 +26,9 @@ class CityStoppingController(Node):
 
         #approx. locations of stoplights (classroom, hallway, vending machines) on map
         # self.stoplight_coords = [(10.4,16.6),(29.2,-34.1), (54.7,-22.9)]
-        self.light_1_pose = (10.4,16.6)
-        self.light_2_pose = (29.2,-34.1)
-        self.light_3_pose = (54.7,-22.9) #might need to flip signs?? already flipped
+        self.light_1_pose = (-10.4,16.6)
+        self.light_2_pose = (-29.2,34.1)
+        self.light_3_pose = (-54.7,22.9) #might need to flip signs?? already flipped
 
         #set default euclid dists to all stoplights
         self.stoplight_1_dist = float('inf')
