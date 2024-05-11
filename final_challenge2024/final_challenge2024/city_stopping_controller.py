@@ -217,7 +217,7 @@ class CityStoppingController(Node):
 
         detects_stoplight = msg.data
 
-        if detects_stoplight and (self.light_1_pose <= radius or self.light_2_pose <= radius or self.light_3_pose <= radius):
+        if detects_stoplight and (self.stoplight_1_dist <= radius or self.stoplight_2_dist <= radius or self.stoplight_3_dist <= radius):
             # error_msg = Float32()
             # error_msg.data = abs(obj_dist-(total_stop_d+threshold))/(total_stop_d+threshold)
             # self.error_pub.publish(error_msg)
