@@ -270,24 +270,24 @@ class PurePursuit(Node):
             self.stop_pub.publish(self.stop_msg)
             self.initialized_traj = False
             return
-        self.get_logger().info(f'min ind{min_index}')
-        self.get_logger().info(f'min ind goal{min_index_goal}')
-        if (min_index_goal<min_index) and (np.linalg.norm(car_xy_pos-nearest_segment[0,:])>3): #uturn
-            steering_angle = -0.34
-            drive_msg = AckermannDriveStamped()
-            drive_msg.drive.speed = self.speed 
-            drive_msg.drive.steering_angle = steering_angle
-            self.drive_pub.publish(drive_msg)
-            time.sleep(0.668/self.speed)
+        # self.get_logger().info(f'min ind{min_index}')
+        # self.get_logger().info(f'min ind goal{min_index_goal}')
+        # if (min_index_goal<min_index) and (np.linalg.norm(car_xy_pos-nearest_segment[0,:])>3): #uturn
+        #     steering_angle = -0.34
+        #     drive_msg = AckermannDriveStamped()
+        #     drive_msg.drive.speed = self.speed 
+        #     drive_msg.drive.steering_angle = steering_angle
+        #     self.drive_pub.publish(drive_msg)
+        #     time.sleep(0.668/self.speed)
 
-            steering_angle = 0.34
-            drive_msg = AckermannDriveStamped()
-            drive_msg.drive.speed = self.speed 
-            drive_msg.drive.steering_angle = steering_angle
-            self.drive_pub.publish(drive_msg)
-            time.sleep(3.338/self.speed)
+        #     steering_angle = 0.34
+        #     drive_msg = AckermannDriveStamped()
+        #     drive_msg.drive.speed = self.speed 
+        #     drive_msg.drive.steering_angle = steering_angle
+        #     self.drive_pub.publish(drive_msg)
+        #     time.sleep(3.338/self.speed)
             
-            return 
+        #     return 
 
 
             
