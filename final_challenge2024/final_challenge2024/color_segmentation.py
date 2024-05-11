@@ -37,18 +37,6 @@ def cd_color_segmentation(img, template):
 	bounding_box = (0,0,0,0)
 	hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-	# h,w = hsv_img.shape[:2] #mask top and bottom
-	# cv2.rectangle(hsv_img,(0,0),(w,int(h*.4)),(0,0,0),-1) #top rectangle
-	# cv2.rectangle(hsv_img, (0, h-int(h*.4)), (w, h), (0, 0, 0), -1)#bottom rectangle
-
-
-	# cv2.imwrite("hsv.jpg", hsv_img) 
-
-	# red color bounds in HSV
-	# Hue has values from 0 to 180, Saturation and Value from 0 to 255
-	#red_low = (0, 100, 100)
-	#red_high = (18, 255, 255)	
-
 	#basically kept this the same, will adjust
 	red_low1 = (-10, 168, 168)
 	red_high1 = (10, 255, 255)	
@@ -64,9 +52,9 @@ def cd_color_segmentation(img, template):
 
 	# cv2.imwrite("mask.jpg", mask) 
 
-	# erode and dilate to get rid of noise
+	# erode and dilate to get rid of noise (got rid of, if any red detected stop)
 	# structuring element is what erosion looks at - if everything inside is red, then it will be kept
-	kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+	# kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
 	# combined_mask = cv2.erode(combined_mask, kernel, iterations=1)
 	# cv2.imwrite("erode.jpg", mask) 
 	# combined_mask = cv2.dilate(combined_mask, kernel, iterations=2)
@@ -77,11 +65,10 @@ def cd_color_segmentation(img, template):
 	if len(contours) != 0:
 		biggest_contour = max(contours, key = cv2.contourArea)
 		x, y, w, h = cv2.boundingRect(biggest_contour)
-		# bounding_box = ((x, y), (x + w, y + h))
   
 		#modify to match that of stop light detector
 		bounding_box = (x, y, x+w, y+h)
-		
+
 	else:
 		#comment out later?
 		print("Light not found.")

@@ -55,7 +55,7 @@ class SignDetector(Node):
 
         # debug_msg = self.bridge.cv2_to_imgmsg(image, "bgr8")
         debug_msg = self.bridge.cv2_to_imgmsg(box_image, "bgr8")
-        self.get_logger().info("Publishing stop sign debug")
+        # self.get_logger().info("Publishing stop sign debug")
         self.debug_pub.publish(debug_msg)
 
 
