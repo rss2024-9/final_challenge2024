@@ -17,8 +17,8 @@ from geometry_msgs.msg import PointStamped
 class CityStoppingController(Node):
     def __init__(self):
         super().__init__("city_stopping_controller")
-        hz = 20
-        self.timer = self.create_timer(1 / hz, self.timer_callback)
+        # hz = 20
+        # self.timer = self.create_timer(1 / hz, self.timer_callback)
 
         # Declare parameters to make them available for use
         self.declare_parameter("drive_topic", "/vesc/high_level/output") 
@@ -116,9 +116,9 @@ class CityStoppingController(Node):
 
         self.marker_pub.publish(marker)
         
-    def timer_callback(self):
-        #attempt to fix stuttering
-        self.stop_pub.publish(self.last_drive_command) #this might cause issues
+    # def timer_callback(self):
+    #     #attempt to fix stuttering
+    #     self.stop_pub.publish(self.last_drive_command) #this might cause issues
 
     def log_drive_command(self,msg):
         """
