@@ -64,7 +64,7 @@ class CityDriver(Node):
         self.viz_timer = self.create_timer(1/5, self.motion_cb)
         self.path = None
         self.pub_start = True
-        self.stopping_dist = 0.3 #m
+        self.stopping_dist = 2 #m
         
         
 
@@ -90,12 +90,12 @@ class CityDriver(Node):
         self.curr_pose = odom_msg
 
         # #if at goal, wait for shell to be placed
-        # if (self.curr_pose and self.end_point) and self.is_close(self.curr_pose,self.end_point):
+        if (self.curr_pose and self.end_point) and self.is_close(self.curr_pose,self.end_point):
             
-        #     if self.wait_time == 0:
-        #         self.state = "wait"
-        #         curr_time = time.time()
-        #         self.wait_time = curr_time
+            if self.wait_time == 0:
+                self.state = "wait"
+                curr_time = time.time()
+                self.wait_time = curr_time
 
 
     def trajectory_callback(self,msg):
@@ -164,22 +164,22 @@ class CityDriver(Node):
         #self.get_logger().info("made it in here")
         temp=[]
         for point in msg.poses:
-            new_pose = Pose()#Stamped()
-            # new_pose.pose.position.x = point.position.x
-            # new_pose.pose.position.y = point.position.y
-            # new_pose.pose.position.z = point.position.z
-            new_pose.position.x = point.position.x
-            new_pose.position.y = point.position.y
-            new_pose.position.z = point.position.z
+            new_pose = PoseStamped()
+            new_pose.pose.position.x = point.position.x
+            new_pose.pose.position.y = point.position.y
+            new_pose.pose.position.z = point.position.z
+            # new_pose.position.x = point.position.x
+            # new_pose.position.y = point.position.y
+            # new_pose.position.z = point.position.z
 
             temp.append(new_pose)
         start = self.curr_pose
         return_point = Pose()#Stamped()
         start = self.curr_pose
-        return_point.position.x = start.pose.pose.position.x
-        return_point.position.y = start.pose.pose.position.y
-        return_point.orientation.z = start.pose.pose.orientation.z
-        return_point.orientation.w = start.pose.pose.orientation.w
+        return_point.pose.position.x = start.pose.pose.position.x
+        return_point.pose.position.y = start.pose.pose.position.y
+        return_point.pose.orientation.z = start.pose.pose.orientation.z
+        return_point.pose.orientation.w = start.pose.pose.orientation.w
         temp.append(return_point)
         self.goals=temp
         #self.get_logger().info("got goal points, starting state machine")
@@ -233,21 +233,21 @@ class CityDriver(Node):
                 self.get_logger().info("went through start")
                 self.state = "drive"
                 self.end_point = self.goals.pop(0)
-                self.send_goal(self.end_point)
-                #self.publish_path()
+                #self.send_goal(self.end_point)
+                self.publish_path()
                 
             elif self.state == "drive":
                 self.get_logger().info("driving")
                 pass 
-            # elif self.state == "wait_start":
-            #     #self.get_logger().info("in wait start")
-            #     self.end_point = self.goals.pop(0)
-            #     self.path_plan(self.end_point)
-            #     self.state="wait"
+            elif self.state == "wait_start":
+                #self.get_logger().info("in wait start")
+                self.end_point = self.goals.pop(0)
+                self.path_plan(self.end_point)
+                self.state="wait"
             elif self.state == "wait":
                 self.get_logger().info("in wait")
                 curr_time = time.time()
-                if (curr_time - self.wait_time ) >=self.max_wait: #and self.path:
+                if (curr_time - self.wait_time ) >=self.max_wait and self.path:
                     self.end_point = self.goals.pop(0)
                     self.send_goal(self.end_point)
                     self.state = "drive"
@@ -255,12 +255,12 @@ class CityDriver(Node):
             else:
                 pass
         
-        # elif not self.goals and self.path is not None:
-        #     #wait to publish return to start path until after last shell is placed
-        #     curr_time = time.time()
-        #     if (curr_time - self.wait_time ) >=self.max_wait and self.path:
-        #         self.publish_path()
-        #         #self.get_logger().info("returning to start")
+        elif not self.goals and self.path is not None:
+            #wait to publish return to start path until after last shell is placed
+            curr_time = time.time()
+            if (curr_time - self.wait_time ) >=self.max_wait and self.path:
+                self.publish_path()
+                #self.get_logger().info("returning to start")
         
 
 
