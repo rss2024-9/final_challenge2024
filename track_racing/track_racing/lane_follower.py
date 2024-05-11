@@ -22,7 +22,7 @@ class LaneFollower(Node):
         
 	    # Publishers and subscribers
         self.drive_pub = self.create_publisher(AckermannDriveStamped, self.drive_topic, 10)
-        self.lane_sub = self.create_subscription(PoseArray, "/trajectory/current", self.lane_cb)
+        self.lane_sub = self.create_subscription(PoseArray, "/trajectory/current", self.lane_cb, 1)
 
         # Callback functions here
         # self.timer = self.create_timer(1 / 20, self.on_tick)
