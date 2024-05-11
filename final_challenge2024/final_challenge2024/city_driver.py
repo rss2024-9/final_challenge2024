@@ -4,7 +4,7 @@ from rclpy.node import Node
 
 import numpy as np
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, PoseArray,PointStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, PoseArray,PointStamped,Pose
 import time
 from .utils import LineTrajectory
 
@@ -40,6 +40,13 @@ class CityDriver(Node):
             "/initialpose",
             10
         )
+
+        # self.initial_sub = self.create_subscription(PoseWithCovarianceStamped,
+        #     "/initialpose",
+        #     self.pose_est,
+        #     10
+        # )
+
         self.goal_pub = self.create_publisher(
             PoseStamped,
             "/goal_pose",
@@ -69,6 +76,9 @@ class CityDriver(Node):
         x2,y2 = end_point.pose.position.x,end_point.pose.position.y
         p2 = np.array((x2,y2))
         return np.linalg.norm(car_xy_pos-p2) <= self.stopping_dist
+    
+    # def pose_est(self,msg):
+    #     self.curr_pose = msg
     
     def stop_cb(self,msg):
         self.state = "wait"
@@ -154,19 +164,22 @@ class CityDriver(Node):
         #self.get_logger().info("made it in here")
         temp=[]
         for point in msg.poses:
-            new_pose = PoseStamped()
-            new_pose.pose.position.x = point.position.x
-            new_pose.pose.position.y = point.position.y
-            new_pose.pose.position.z = point.position.z
+            new_pose = Pose()#Stamped()
+            # new_pose.pose.position.x = point.position.x
+            # new_pose.pose.position.y = point.position.y
+            # new_pose.pose.position.z = point.position.z
+            new_pose.position.x = point.position.x
+            new_pose.position.y = point.position.y
+            new_pose.position.z = point.position.z
 
             temp.append(new_pose)
         start = self.curr_pose
-        return_point = PoseStamped()
+        return_point = Pose()#Stamped()
         start = self.curr_pose
-        return_point.pose.position.x = start.pose.pose.position.x
-        return_point.pose.position.y = start.pose.pose.position.y
-        return_point.pose.orientation.z = start.pose.pose.orientation.z
-        return_point.pose.orientation.w = start.pose.pose.orientation.w
+        return_point.position.x = start.pose.pose.position.x
+        return_point.position.y = start.pose.pose.position.y
+        return_point.orientation.z = start.pose.pose.orientation.z
+        return_point.orientation.w = start.pose.pose.orientation.w
         temp.append(return_point)
         self.goals=temp
         #self.get_logger().info("got goal points, starting state machine")
@@ -217,14 +230,14 @@ class CityDriver(Node):
         if self.goals:
             
             if self.state == "start" :
-                #self.get_logger().info("went through start")
+                self.get_logger().info("went through start")
                 self.state = "drive"
                 self.end_point = self.goals.pop(0)
                 self.send_goal(self.end_point)
                 #self.publish_path()
                 
             elif self.state == "drive":
-                #self.get_logger().info("driving")
+                self.get_logger().info("driving")
                 pass 
             # elif self.state == "wait_start":
             #     #self.get_logger().info("in wait start")
@@ -232,7 +245,7 @@ class CityDriver(Node):
             #     self.path_plan(self.end_point)
             #     self.state="wait"
             elif self.state == "wait":
-                #self.get_logger().info("in wait")
+                self.get_logger().info("in wait")
                 curr_time = time.time()
                 if (curr_time - self.wait_time ) >=self.max_wait: #and self.path:
                     self.end_point = self.goals.pop(0)

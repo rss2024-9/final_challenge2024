@@ -19,7 +19,7 @@ class PurePursuit(Node):
     def __init__(self):
         super().__init__("trajectory_follower")
         self.declare_parameter('odom_topic', "default")
-        self.declare_parameter('drive_topic', "default")
+        self.declare_parameter('drive_topic', "drive")
 
         self.odom_topic = self.get_parameter('odom_topic').get_parameter_value().string_value
         self.drive_topic = self.get_parameter('drive_topic').get_parameter_value().string_value
@@ -44,7 +44,7 @@ class PurePursuit(Node):
         self.traj_sub = self.create_subscription(PoseArray,"/trajectory/current", self.trajectory_callback, 1)
         
         #this is so that the thing will always visualize
-        self.viz_sub = self.create_subscription(PoseArray,"loaded_trajectory/path", self.dummy_callback, 1)
+        #self.viz_sub = self.create_subscription(PoseArray,"loaded_trajectory/path", self.dummy_callback, 1)
 
         self.drive_pub = self.create_publisher(AckermannDriveStamped,
                                                self.drive_topic,
@@ -224,14 +224,14 @@ class PurePursuit(Node):
         min_index = np.argmin(nrst_distances)
         nearest_segment = traj_points[min_index:(min_index+2),:]
 
-        #####################################
-        #do logic with goal point
-        ############################
-        goal_point = self.trajectory.points
-        N=goal_point.shape[0]
+        # #####################################
+        # #do logic with goal point
+        # ############################
+        goal_point = np.array(self.trajectory.points)
+        N=traj_points.shape[0]
         nrst_distances_to_goal = self.find_dist(traj_points[0:N-1,:],traj_points[1:N,:],goal_point)
-        min_index = np.argmin(nrst_distances_to_goal)
-        nearest_segment_to_goal = traj_points[min_index:(min_index+2),:]
+        min_index_goal = np.argmin(nrst_distances_to_goal)
+        nearest_segment_to_goal = traj_points[min_index_goal:(min_index_goal+2),:]
 
         #check if the goal is on the right
         nearest_vector_delta = nearest_segment_to_goal[1,:]-nearest_segment_to_goal[0,:]
@@ -250,21 +250,44 @@ class PurePursuit(Node):
             on_goal_segment = False
 
         # check if the projetions are close
-        goal_projection = np.dot(point_to_goal,nearest_vector_delta)/(np.linalg.norm(point_to_goal)*np.linalg.norm(nearest_vector_delta))
+        point_to_goal_unit = point_to_goal/np.sum(point_to_goal**2)**.5
+        goal_projection = np.dot(point_to_goal,nearest_vector_delta)#/(np.linalg.norm(nearest_vector_delta))
         point_to_car = car_xy_pos-nearest_segment[0,:]
-        car_projection = np.dot(point_to_car,nearest_vector_delta)/(np.linalg.norm(point_to_car)*np.linalg.norm(nearest_vector_delta))
-        if abs(goal_projection-car_projection)< 0.1:
+        point_to_car_unit =point_to_car/np.sum(point_to_car**2)**.5
+        car_projection = np.dot(point_to_car,nearest_vector_delta)#/(np.linalg.norm(nearest_vector_delta))
+        #self.get_logger().info(f'projdif {goal_projection-car_projection}')
+        if abs(goal_projection-car_projection)< 1:
             projection_close = True
         else:
             projection_close = False
 
         if goal_on_right and on_goal_segment and projection_close:
+            self.get_logger().info("stopping cause satisfied")
             drive_msg = AckermannDriveStamped()
             drive_msg.drive.speed = 0.0 
             drive_msg.drive.steering_angle = 0.0
             self.drive_pub.publish(drive_msg)
             self.stop_pub.publish(self.stop_msg)
+            self.initialized_traj = False
             return
+        self.get_logger().info(f'min ind{min_index}')
+        self.get_logger().info(f'min ind goal{min_index_goal}')
+        # if (min_index_goal<min_index) and (np.linalg.norm(car_xy_pos-nearest_segment[0,:])>3): #uturn
+        #     steering_angle = -0.34
+        #     drive_msg = AckermannDriveStamped()
+        #     drive_msg.drive.speed = self.speed 
+        #     drive_msg.drive.steering_angle = steering_angle
+        #     self.drive_pub.publish(drive_msg)
+        #     time.sleep(0.668/self.speed)
+
+        #     steering_angle = 0.34
+        #     drive_msg = AckermannDriveStamped()
+        #     drive_msg.drive.speed = self.speed 
+        #     drive_msg.drive.steering_angle = steering_angle
+        #     self.drive_pub.publish(drive_msg)
+        #     time.sleep(3.338/self.speed)
+            
+        #     return 
 
 
             
@@ -307,8 +330,10 @@ class PurePursuit(Node):
     
         #if the car is so close to the end look to the next
         dist_from_end = np.linalg.norm(car_xy_pos-p2)
+        
         i_counter = 0
         while (dist_from_end <= self.lookahead) and (min_index+i_counter+3) <= traj_points.shape[0]:
+            #self.get_logger().info(f"dist end: {dist_from_end}")
             nearest_segment = traj_points[(min_index+i_counter+1):(min_index+i_counter+3),:]
             p1 = nearest_segment[0,:]
             p2 = nearest_segment[1,:]
@@ -356,6 +381,7 @@ class PurePursuit(Node):
             #i think you just want to pick the one that is closer to the second point, ie the greatest t?
             #t1 should be greater, but it might be out of range! if it is out of range then use t2
             target_point = int1
+        #self.get_logger().info(f'{target_point}')
         
         
         
@@ -463,11 +489,11 @@ class PurePursuit(Node):
 
         self.trajectory.clear()
         self.trajectory.fromPoseArray(msg)
-        self.trajectory.publish_viz(duration=0.0)
+        #self.trajectory.publish_viz(duration=0.0)
         self.initialized_traj = True
     
-    def dummy_callback(self,msg):
-        return
+    # def dummy_callback(self,msg):
+    #     return
 
     def find_dist(self, linepoint1, linepoint2, point):
         linepoint1 = np.array(linepoint1)
